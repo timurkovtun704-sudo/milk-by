@@ -7,12 +7,18 @@ import type {
 } from "../../types/catalog";
 
 import type { Locale } from "../../i18n/messages";
-import type { CatalogUiMessages } from "../../i18n/catalogMessages";
+
+import type {
+  CatalogUiMessages,
+} from "../../i18n/catalogMessages";
 
 interface ProductCardProps {
   product: CatalogProduct;
+
   category?: ProductCategory;
+
   locale: Locale;
+
   messages: CatalogUiMessages;
 }
 
@@ -22,6 +28,14 @@ export default function ProductCard({
   locale,
   messages,
 }: ProductCardProps) {
+  const imageUrl =
+    product.images?.[0]?.url ??
+    product.imageUrl;
+
+  const imageAlt =
+    product.images?.[0]?.alt ||
+    product.name;
+
   return (
     <article className="product-card">
       <Link
@@ -29,10 +43,10 @@ export default function ProductCard({
         to={`/${locale}/products/${encodeURIComponent(product.slug)}`}
       >
         <div className="product-card__media">
-          {product.imageUrl ? (
+          {imageUrl ? (
             <img
-              src={product.imageUrl}
-              alt={product.name}
+              src={imageUrl}
+              alt={imageAlt}
               loading="lazy"
             />
           ) : (
@@ -64,7 +78,7 @@ export default function ProductCard({
 
                 <p>
                   {product.packagings
-                    .map((packaging) => packaging.label)
+                    .map((item) => item.label)
                     .join(", ")}
                 </p>
               </div>

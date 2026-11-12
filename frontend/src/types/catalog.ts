@@ -5,6 +5,18 @@ export type CatalogAttributeValue =
   | CatalogPrimitive
   | readonly CatalogPrimitive[];
 
+export interface ProductImage {
+  id: string;
+  url: string;
+  alt?: string | null;
+}
+
+export interface ProductSeoMetadata {
+  title?: string | null;
+  description?: string | null;
+  canonicalUrl?: string | null;
+}
+
 export interface ProductPackaging {
   id: string;
   label: string;
@@ -16,7 +28,13 @@ export interface ProductPackaging {
   shelfLife?: string | null;
   imageUrl?: string | null;
 
-  attributes?: Readonly<Record<string, CatalogAttributeValue>>;
+  attributes?: Readonly<
+    Record<string, CatalogAttributeValue>
+  >;
+
+  attributeLabels?: Readonly<
+    Record<string, string>
+  >;
 }
 
 export interface CatalogProduct {
@@ -25,7 +43,9 @@ export interface CatalogProduct {
   name: string;
 
   description?: string | null;
+
   imageUrl?: string | null;
+  images?: readonly ProductImage[];
 
   categoryId: string;
 
@@ -35,9 +55,15 @@ export interface CatalogProduct {
     Record<string, CatalogAttributeValue>
   >;
 
+  attributeLabels?: Readonly<
+    Record<string, string>
+  >;
+
   packagings?: readonly ProductPackaging[];
 
   publishedAt?: string | null;
+
+  seo?: ProductSeoMetadata;
 }
 
 export interface ProductCategory {

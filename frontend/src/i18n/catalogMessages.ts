@@ -37,6 +37,18 @@ export interface CatalogUiMessages {
   productUnavailableTitle: string;
   productUnavailableDescription: string;
   backToCatalog: string;
+
+  productGalleryTitle: string;
+  productSpecificationsTitle: string;
+  productPackagingTitle: string;
+  productPackagingAttributesTitle: string;
+  productRelatedTitle: string;
+
+  productNoSpecifications: string;
+  productPackagingSelect: string;
+  productWeight: string;
+  productVolume: string;
+  productShelfLife: string;
 }
 
 export const catalogMessages: Record<
@@ -82,6 +94,18 @@ export const catalogMessages: Record<
     productUnavailableDescription:
       "Не удалось получить информацию об этой продукции.",
     backToCatalog: "Вернуться в каталог",
+
+    productGalleryTitle: "Фотографии",
+    productSpecificationsTitle: "Характеристики",
+    productPackagingTitle: "Варианты фасовки",
+    productPackagingAttributesTitle: "Характеристики выбранной фасовки",
+    productRelatedTitle: "Связанные товары",
+
+    productNoSpecifications: "Характеристики не указаны",
+    productPackagingSelect: "Выберите фасовку",
+    productWeight: "Масса",
+    productVolume: "Объём",
+    productShelfLife: "Срок годности",
   },
 
   be: {
@@ -123,6 +147,18 @@ export const catalogMessages: Record<
     productUnavailableDescription:
       "Не ўдалося атрымаць інфармацыю пра гэтую прадукцыю.",
     backToCatalog: "Вярнуцца ў каталог",
+
+    productGalleryTitle: "Фатаграфіі",
+    productSpecificationsTitle: "Характарыстыкі",
+    productPackagingTitle: "Варыянты фасоўкі",
+    productPackagingAttributesTitle: "Характарыстыкі выбранай фасоўкі",
+    productRelatedTitle: "Звязаныя тавары",
+
+    productNoSpecifications: "Характарыстыкі не ўказаны",
+    productPackagingSelect: "Выберыце фасоўку",
+    productWeight: "Маса",
+    productVolume: "Аб'ём",
+    productShelfLife: "Тэрмін прыдатнасці",
   },
 
   en: {
@@ -164,6 +200,18 @@ export const catalogMessages: Record<
     productUnavailableDescription:
       "Information about this product could not be retrieved.",
     backToCatalog: "Back to catalogue",
+
+    productGalleryTitle: "Photos",
+    productSpecificationsTitle: "Specifications",
+    productPackagingTitle: "Packaging options",
+    productPackagingAttributesTitle: "Selected packaging specifications",
+    productRelatedTitle: "Related products",
+
+    productNoSpecifications: "No specifications provided",
+    productPackagingSelect: "Select packaging",
+    productWeight: "Weight",
+    productVolume: "Volume",
+    productShelfLife: "Shelf life",
   },
 
   zh: {
@@ -203,5 +251,17 @@ export const catalogMessages: Record<
     productUnavailableDescription:
       "无法获取该产品的信息。",
     backToCatalog: "返回产品目录",
+
+    productGalleryTitle: "产品图片",
+    productSpecificationsTitle: "产品参数",
+    productPackagingTitle: "包装规格",
+    productPackagingAttributesTitle: "所选包装规格参数",
+    productRelatedTitle: "相关产品",
+
+    productNoSpecifications: "暂无产品参数",
+    productPackagingSelect: "选择包装规格",
+    productWeight: "重量",
+    productVolume: "容量",
+    productShelfLife: "保质期",
   },
 };
