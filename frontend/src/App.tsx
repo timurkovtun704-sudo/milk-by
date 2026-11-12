@@ -1,44 +1,132 @@
+
+import { Navigate, Route, Routes } from "react-router-dom";
+
+import SiteLayout from "./layouts/SiteLayout";
+import AdminLayout from "./layouts/AdminLayout";
+
+import HomePage from "./pages/HomePage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import NewsPage from "./pages/NewsPage";
+import NewsDetailPage from "./pages/NewsDetailPage";
+import InfoPage from "./pages/InfoPage";
+import NotFoundPage from "./pages/NotFoundPage";
+
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
+import AdminProductsPage from "./pages/admin/AdminProductsPage";
+import AdminNewsPage from "./pages/admin/AdminNewsPage";
+import AdminTranslationsPage from "./pages/admin/AdminTranslationsPage";
+import AdminSeoPage from "./pages/admin/AdminSeoPage";
+
 function App() {
   return (
-    <main className="page">
-      <header className="header">
-        <a className="logo" href="/">Молочный Мир</a>
-        <nav aria-label="Основная навигация">
-          <a href="#catalog">Продукция</a>
-          <a href="#about">О компании</a>
-          <a href="#news">Новости</a>
-          <a href="#contacts">Контакты</a>
-        </nav>
-      </header>
+    <Routes>
+      <Route
+        path="/"
+        element={<Navigate to="/ru" replace />}
+      />
 
-      <section className="hero">
-        <p className="eyebrow">ОАО «Молочный Мир»</p>
-        <h1>Вкус качества каждый день</h1>
-        <p>Цифровая витрина молочной продукции. Каталог и информация о компании.</p>
-        <a className="button" href="#catalog">Перейти в каталог</a>
-      </section>
+      {/* Administrative panel */}
 
-      <section id="catalog" className="placeholder-section">
-        <h2>Каталог продукции</h2>
-        <p>Здесь будет каталог товаров. Данные будут загружаться из Backend API.</p>
-      </section>
+      <Route
+        path="/:locale/admin"
+        element={<AdminLayout />}
+      >
+        <Route
+          index
+          element={<AdminDashboardPage />}
+        />
 
-      <section id="about" className="placeholder-section">
-        <h2>О компании</h2>
-        <p>Информационный раздел будет реализован в рамках задач Frontend-команды.</p>
-      </section>
+        <Route
+          path="categories"
+          element={<AdminCategoriesPage />}
+        />
 
-      <section id="news" className="placeholder-section">
-        <h2>Новости</h2>
-        <p>Здесь будут отображаться публикации компании.</p>
-      </section>
+        <Route
+          path="products"
+          element={<AdminProductsPage />}
+        />
 
-      <footer id="contacts">
-        <strong>Молочный Мир</strong>
-        <span>Контактная информация будет добавлена после согласования с заказчиком.</span>
-      </footer>
-    </main>
-  )
+        <Route
+          path="news"
+          element={<AdminNewsPage />}
+        />
+
+        <Route
+          path="translations"
+          element={<AdminTranslationsPage />}
+        />
+
+        <Route
+          path="seo"
+          element={<AdminSeoPage />}
+        />
+      </Route>
+
+      {/* Public website */}
+
+      <Route
+        path="/:locale"
+        element={<SiteLayout />}
+      >
+        <Route
+          index
+          element={<HomePage />}
+        />
+
+        <Route
+          path="products"
+          element={<ProductsPage />}
+        />
+
+        <Route
+          path="products/:slug"
+          element={<ProductDetailPage />}
+        />
+
+        <Route
+          path="news"
+          element={<NewsPage />}
+        />
+
+        <Route
+          path="news/:slug"
+          element={<NewsDetailPage />}
+        />
+
+        <Route
+          path="about"
+          element={<InfoPage page="about" />}
+        />
+
+        <Route
+          path="export"
+          element={<InfoPage page="export" />}
+        />
+
+        <Route
+          path="partners"
+          element={<InfoPage page="partners" />}
+        />
+
+        <Route
+          path="contacts"
+          element={<InfoPage page="contacts" />}
+        />
+
+        <Route
+          path="*"
+          element={<NotFoundPage />}
+        />
+      </Route>
+
+      <Route
+        path="*"
+        element={<Navigate to="/ru" replace />}
+      />
+    </Routes>
+  );
 }
 
-export default App
+export default App;
