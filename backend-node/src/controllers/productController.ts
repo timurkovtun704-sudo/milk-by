@@ -2,7 +2,8 @@
 import { Request, Response } from 'express';
 import {
     getAllProducts,
-    getProductById
+    getProductById,
+    createProduct
 } from '../services/productService.js';
 
 
@@ -56,3 +57,38 @@ export const getProductByIdController = async ( req: Request,res: Response) => {
         });
     }
 };
+
+
+export const createProductController = async (req: Request, res: Response) => {
+    const { name, description, price, image_url, category, is_active } = req.body;
+
+    if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Product name is required'
+        });
+    }
+
+    try {
+        const product = await createProduct({
+            name: name.trim(),
+            description: description ?? null,
+            price: price ?? null,
+            image_url: image_url ?? null,
+            category: category ?? null,
+            is_active: is_active ?? true
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: 'Product created successfully',
+            data: product
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : 'Server error'
+        });
+    }
+};
+
