@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import systemRoutes from './routes/systemRoutes.js';
+import productRoutes from './routes/productRoutes.js';
 
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.get('/api/health', (_req, res) => {
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use('/api', systemRoutes);
+app.use('/api/products', productRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

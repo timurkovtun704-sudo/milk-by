@@ -1,7 +1,12 @@
-import { Request, Response } from 'express';
-import { getAllProducts, getProductById } from '../services/productService.js';
 
-export const getAllProductsController = async ( req: Request, res: Response) => {
+import { Request, Response } from 'express';
+import {
+    getAllProducts,
+    getProductById
+} from '../services/productService.js';
+
+
+export const getAllProductsController = async (req: Request,res: Response) => {
     try {
         const products = await getAllProducts();
 
@@ -12,14 +17,17 @@ export const getAllProductsController = async ( req: Request, res: Response) => 
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error ? error.message : 'Server error'
+            message: error instanceof Error
+                ? error.message
+                : 'Server error'
         });
     }
 };
 
-export const getProductByIdController = async ( req: Request, res: Response ) => {
-    const id = Number(req.params.id)
-    
+
+export const getProductByIdController = async ( req: Request,res: Response) => {
+    const id = Number(req.params.id);
+
     if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({
             success: false,
@@ -27,16 +35,24 @@ export const getProductByIdController = async ( req: Request, res: Response ) =>
         });
     }
 
-    try{
-        const getId =  await getProductById(id)
+    try {
+        const product = await getProductById(id);
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
+
         return res.status(200).json({
             success: true,
-            data: getId
-        })
+            data: product
+        });
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error ? error.message : 'Server error'
-        })
+            message: error instanceof Error? error.message: 'Server error'
+        });
     }
-}
+};
