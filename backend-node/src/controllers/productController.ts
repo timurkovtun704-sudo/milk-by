@@ -64,15 +64,16 @@ export const getProductByIdController = async ( req: Request,res: Response) => {
 };
 
 
-export const createProductController = async ( req: Request, res: Response) => {
-    const {name, description, image_url, category, is_active } = req.body;
+
+export const createProductController = async (req: Request, res: Response) => {
+    const { name, description, image_url, category, is_active } = req.body;
 
     if (typeof name !== 'string' || !name.trim()) {
         return res.status(400).json({
             success: false,
             message: 'Название товара обязательно'
         });
-    }   
+    }
 
     if (typeof description !== 'string' || !description.trim()) {
         return res.status(400).json({
@@ -126,20 +127,36 @@ export const createProductController = async ( req: Request, res: Response) => {
             category: category.trim(),
             is_active: is_active
         });
-        
 
         return res.status(201).json({
             success: true,
             message: 'Товар успешно создан',
             data: product
         });
+
     } catch (error) {
+
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            error.code === '23505'
+        ) {
+            return res.status(409).json({
+                success: false,
+                message: 'Товар с таким названием уже существует'
+            });
+        }
+
         return res.status(500).json({
             success: false,
-            message: error instanceof Error ? error.message : 'Ошибка сервера'
+            message: error instanceof Error
+                ? error.message
+                : 'Ошибка сервера'
         });
-    };
-}
+    }
+};
+
 
 export const deleteProductController = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
@@ -166,11 +183,22 @@ export const deleteProductController = async (req: Request, res: Response) => {
             message: 'Товар успешно удалён'
         });
     } catch (error) {
+        if( typeof error === 'object' && 
+            error !== null && 
+            'code' in error &&
+            error.code ==='23505'
+        ){
+            return res.status(409).json({
+                success: false,
+                message: 'Товар с таким названием уже существует'
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: error instanceof Error
                 ? error.message
-                : 'Server error'
+                : 'Ошибка сервера'
         });
     }
 };
