@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import systemRoutes from './routes/systemRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import subcategoryRoutes from './routes/subcategoryRoutes.js';
+import newsRoutes from './routes/newsRoutes.js';
 
 dotenv.config();
 
@@ -17,10 +19,10 @@ app.use(express.json());
 
 // Проверка работоспособности сервера
 app.get('/api/health', (_req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'Milk World API is running',
-  });
+    res.status(200).json({
+        status: 'ok',
+        message: 'Milk World API is running',
+    });
 });
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -29,8 +31,10 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use('/api', systemRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/subcategories', subcategoryRoutes);
+app.use('/api/news', newsRoutes);
 
 // Запуск сервера
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
