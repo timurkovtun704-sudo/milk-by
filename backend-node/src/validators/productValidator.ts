@@ -3,7 +3,7 @@ export interface Product {
     name: string;
     description: string;
     image_url: string;
-    category: string | null;
+    category: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;
@@ -13,8 +13,8 @@ export interface CreateProductDto {
     name: string;
     description: string;
     image_url: string;
-    category: string | null;
-    is_active?: boolean;
+    category: string;
+    is_active: boolean;
 }
 
 export type UpdateProductDto = Partial<CreateProductDto>;
