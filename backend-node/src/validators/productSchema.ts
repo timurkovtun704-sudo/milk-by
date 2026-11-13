@@ -17,4 +17,9 @@ export const createProductSchema = z.object({
 });
 
 // Схема проверки данных при обновлении товара
-export const updateProductSchema = createProductSchema.partial();
+export const updateProductSchema = createProductSchema.partial().refine(
+    (data) => Object.keys(data).length > 0,
+    {
+        message: 'Необходимо указать хотя бы одно поле для обновления',
+    }
+);
