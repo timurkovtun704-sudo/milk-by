@@ -14,6 +14,8 @@ import {
   searchProductsController
 } from '../controllers/productSearchController.js';
 
+import { requireAuth, requireRole } from '../middleware/authMiddleware.js';
+
 
 
 const router = Router();
@@ -29,13 +31,28 @@ router.get('/categories', getCategoriesController);
 // Получить товар по ID
 router.get('/:id', getProductByIdController);
 
-// Создать товар
-router.post('/', createProductController);
+// Создать товар — admin и editor
+router.post(
+  '/',
+  requireAuth,
+  requireRole('admin', 'editor'),
+  createProductController
+);
 
-// Обновить товар
-router.patch('/:id', updateProductController);
+// Обновить товар — admin и editor
+router.patch(
+  '/:id',
+  requireAuth,
+  requireRole('admin', 'editor'),
+  updateProductController
+);
 
-// Удалить товар
-router.delete('/:id', deleteProductController);
+// Удалить товар — только admin
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRole('admin'),
+  deleteProductController
+);
 
 export default router;
