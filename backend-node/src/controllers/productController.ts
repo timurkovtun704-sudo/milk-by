@@ -1,15 +1,20 @@
 
 import { Request, Response } from 'express';
+
 import {
     getAllProducts,
     getProductById,
     createProduct,
     deleteProduct,
     updateProduct,
-    getCategories
+    getCategories,
+    createCategory,
+    renameCategory,
+    deleteCategory
 } from '../services/productService.js';
 
 import { updateProductSchema } from '../validators/productSchema.js';
+
 
 
 export const getAllProductsController = async (req: Request,res: Response) => {
@@ -270,6 +275,146 @@ export const getCategoriesController = async (
             message: error instanceof Error
                 ? error.message
                 : 'Server error'
+        });
+    }
+};
+
+
+export const createCategoryController = async (
+    req: Request,
+    res: Response
+) => {
+    const { name } = req.body;
+
+    if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Название категории обязательно'
+        });
+    }
+
+    try {
+        const category = await createCategory(name.trim());
+
+        return res.status(201).json({
+            success: true,
+            message: 'Категория успешно создана',
+            data: category
+        });
+    } catch (error) {
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            error.code === '23505'
+        ) {
+            return res.status(409).json({
+                success: false,
+                message: 'Такая категория уже существует'
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : 'Ошибка сервера'
+        });
+    }
+};
+
+
+export const renameCategoryController = async (
+    req: Request,
+    res: Response
+) => {
+    const id = Number(req.params.id);
+    const { name } = req.body;
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Некорректный ID категории'
+        });
+    }
+
+    if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Название категории обязательно'
+        });
+    }
+
+    try {
+        const category = await renameCategory(id, name.trim());
+
+        return res.status(200).json({
+            success: true,
+            message: 'Категория успешно обновлена',
+            data: category
+        });
+    } catch (error) {
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            error.code === '23505'
+        ) {
+            return res.status(409).json({
+                success: false,
+                message: 'Такая категория уже существует'
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : 'Ошибка сервера'
+        });
+    }
+};
+
+export const deleteCategoryController = async (
+    req: Request,
+    res: Response
+) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Некорректный ID категории'
+        });
+    }
+
+    try {
+        const result = await deleteCategory(id);
+
+        if ('notFound' in result && result.notFound) {
+            return res.status(404).json({
+                success: false,
+                message: 'Категория не найдена'
+            });
+        }
+
+        if ('inUse' in result && result.inUse) {
+            return res.status(409).json({
+                success: false,
+                message: 'Нельзя удалить категорию, пока в ней есть товары'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Категория успешно удалена'
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : 'Ошибка сервера'
         });
     }
 };
