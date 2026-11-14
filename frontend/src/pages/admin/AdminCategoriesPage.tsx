@@ -13,8 +13,12 @@ import { useAuth } from "../../hooks/useAuth";
 
 import { adminApiMessages } from "../../i18n/adminApiMessages";
 
-import { getProductCategories } from "../../services/productService";
-import { createCategory } from "../../services/categoryService";
+import {
+  createCategory,
+  deleteCategory,
+  getAdminCategories,
+  updateCategory,
+} from "../../services/categoryService";
 
 import type { ProductCategory } from "../../types/catalog";
 
@@ -23,9 +27,11 @@ import "../../styles/admin-api.css";
 
 export default function AdminCategoriesPage() {
   const { locale, messages, notify } = useAdminContext();
-  const { accessToken } = useAuth();
+  const { accessToken, role } = useAuth();
 
   const labels = adminApiMessages[locale];
+
+  const canDelete = role === "admin";
 
   const [categories, setCategories] = useState<ProductCategory[]>([]);
 
@@ -33,12 +39,18 @@ export default function AdminCategoriesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] =
+    useState<string | null>(null);
+
   const [categoryName, setCategoryName] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] =
+    useState<string | null>(null);
+
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Получение актуального списка категорий
+  // Загрузка категорий с числовыми ID
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
@@ -48,7 +60,7 @@ export default function AdminCategoriesPage() {
       setLoadError(null);
 
       try {
-        const result = await getProductCategories(
+        const result = await getAdminCategories(
           controller.signal
         );
 
@@ -58,12 +70,16 @@ export default function AdminCategoriesPage() {
       } catch (error) {
         if (
           !active ||
-          (error instanceof Error && error.name === "AbortError")
+          (error instanceof Error &&
+            error.name === "AbortError")
         ) {
           return;
         }
 
-        console.error("Ошибка загрузки категорий:", error);
+        console.error(
+          "Ошибка загрузки категорий:",
+          error
+        );
 
         setLoadError(
           error instanceof Error
@@ -85,6 +101,25 @@ export default function AdminCategoriesPage() {
     };
   }, [reloadKey, labels.categoriesError]);
 
+  function openCreateForm() {
+    setEditingCategoryId(null);
+    setCategoryName("");
+    setFormOpen(true);
+  }
+
+  function openEditForm(category: ProductCategory) {
+    setEditingCategoryId(category.id);
+    setCategoryName(category.name);
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingCategoryId(null);
+    setCategoryName("");
+  }
+
+  // Создание или переименование категории
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -104,18 +139,37 @@ export default function AdminCategoriesPage() {
     setIsSaving(true);
 
     try {
-      await createCategory(
-        { name: trimmedName },
-        accessToken
-      );
+      if (editingCategoryId) {
+        await updateCategory(
+          editingCategoryId,
+          { name: trimmedName },
+          accessToken
+        );
 
-      notify(labels.categoryCreateSuccess, "success");
+        notify(
+          labels.categoryUpdateSuccess,
+          "success"
+        );
+      } else {
+        await createCategory(
+          { name: trimmedName },
+          accessToken
+        );
 
-      setCategoryName("");
-      setFormOpen(false);
+        notify(
+          labels.categoryCreateSuccess,
+          "success"
+        );
+      }
+
+      closeForm();
+
       setReloadKey((current) => current + 1);
     } catch (error) {
-      console.error("Ошибка создания категории:", error);
+      console.error(
+        "Ошибка сохранения категории:",
+        error
+      );
 
       notify(
         error instanceof Error
@@ -128,6 +182,57 @@ export default function AdminCategoriesPage() {
     }
   }
 
+  // Удаление категории
+  async function handleDelete(
+    category: ProductCategory
+  ) {
+    if (!accessToken || !canDelete) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${labels.confirmDeleteCategory}\n\n${category.name}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCategoryId(category.id);
+
+    try {
+      await deleteCategory(
+        category.id,
+        accessToken
+      );
+
+      notify(
+        labels.categoryDeleteSuccess,
+        "success"
+      );
+
+      if (editingCategoryId === category.id) {
+        closeForm();
+      }
+
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      console.error(
+        "Ошибка удаления категории:",
+        error
+      );
+
+      notify(
+        error instanceof Error
+          ? error.message
+          : labels.operationError,
+        "warning"
+      );
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  }
+
   return (
     <div className="admin-page">
       <AdminPageHeading
@@ -137,7 +242,8 @@ export default function AdminCategoriesPage() {
           <button
             className="admin-button admin-button--primary"
             type="button"
-            onClick={() => setFormOpen((current) => !current)}
+            onClick={openCreateForm}
+            disabled={isSaving || deletingCategoryId !== null}
           >
             <span aria-hidden="true">+</span>
             {messages.categories.addTitle}
@@ -149,14 +255,18 @@ export default function AdminCategoriesPage() {
         <section className="admin-form-panel">
           <div className="admin-form-panel__heading">
             <div>
-              <h2>{messages.categories.formTitle}</h2>
+              <h2>
+                {editingCategoryId
+                  ? labels.edit
+                  : messages.categories.formTitle}
+              </h2>
             </div>
 
             <button
               className="admin-icon-button"
               type="button"
               aria-label={messages.common.close}
-              onClick={() => setFormOpen(false)}
+              onClick={closeForm}
               disabled={isSaving}
             >
               ×
@@ -178,7 +288,9 @@ export default function AdminCategoriesPage() {
                 type="text"
                 value={categoryName}
                 onChange={(event) =>
-                  setCategoryName(event.currentTarget.value)
+                  setCategoryName(
+                    event.currentTarget.value
+                  )
                 }
                 maxLength={150}
                 required
@@ -195,15 +307,21 @@ export default function AdminCategoriesPage() {
               <button
                 className="admin-button admin-button--primary"
                 type="submit"
-                disabled={isSaving || !categoryName.trim()}
+                disabled={
+                  isSaving ||
+                  !categoryName.trim() ||
+                  deletingCategoryId !== null
+                }
               >
-                {isSaving ? labels.saving : labels.save}
+                {isSaving
+                  ? labels.saving
+                  : labels.save}
               </button>
 
               <button
                 className="admin-button admin-button--secondary"
                 type="button"
-                onClick={() => setFormOpen(false)}
+                onClick={closeForm}
                 disabled={isSaving}
               >
                 {labels.cancel}
@@ -214,26 +332,39 @@ export default function AdminCategoriesPage() {
       )}
 
       {isLoading ? (
-        <p className="admin-api-state" role="status">
+        <p
+          className="admin-api-state"
+          role="status"
+        >
           {labels.categoriesLoading}
         </p>
       ) : loadError ? (
-        <section className="admin-api-state" role="alert">
+        <section
+          className="admin-api-state"
+          role="alert"
+        >
           <h2>{labels.categoriesError}</h2>
           <p>{loadError}</p>
 
           <button
             className="admin-button admin-button--secondary"
             type="button"
-            onClick={() => setReloadKey((current) => current + 1)}
+            onClick={() =>
+              setReloadKey((current) => current + 1)
+            }
           >
             {labels.retry}
           </button>
         </section>
       ) : categories.length === 0 ? (
         <section className="admin-empty-list">
-          <h2>{messages.categories.noCategoriesTitle}</h2>
-          <p>{messages.categories.noCategoriesDescription}</p>
+          <h2>
+            {messages.categories.noCategoriesTitle}
+          </h2>
+
+          <p>
+            {messages.categories.noCategoriesDescription}
+          </p>
         </section>
       ) : (
         <section className="admin-data-list">
@@ -244,9 +375,43 @@ export default function AdminCategoriesPage() {
             >
               <div className="admin-data-card__content">
                 <h2>{category.name}</h2>
+
                 <div className="admin-data-card__meta">
                   <span>URL: {category.slug}</span>
+                  <span>ID: {category.id}</span>
                 </div>
+              </div>
+
+              <div className="admin-data-card__actions">
+                <button
+                  className="admin-button admin-button--secondary"
+                  type="button"
+                  onClick={() => openEditForm(category)}
+                  disabled={
+                    isSaving ||
+                    deletingCategoryId !== null
+                  }
+                >
+                  {labels.edit}
+                </button>
+
+                {canDelete && (
+                  <button
+                    className="admin-button admin-button--danger"
+                    type="button"
+                    onClick={() =>
+                      void handleDelete(category)
+                    }
+                    disabled={
+                      deletingCategoryId !== null ||
+                      isSaving
+                    }
+                  >
+                    {deletingCategoryId === category.id
+                      ? labels.saving
+                      : labels.delete}
+                  </button>
+                )}
               </div>
             </article>
           ))}

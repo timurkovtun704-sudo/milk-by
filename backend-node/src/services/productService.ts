@@ -71,15 +71,16 @@ export const updateProduct = async (
 };
 
 
+// Получение категорий вместе с числовыми ID
 export const getCategories = async () => {
     const { data, error } = await supabase
         .from('categories')
-        .select('name')
+        .select('id, name')
         .order('id', { ascending: true });
 
     if (error) throw new Error(error.message);
 
-    return data.map(item => item.name);
+    return data ?? [];
 };
 
 export const createCategory = async (name: string) => {

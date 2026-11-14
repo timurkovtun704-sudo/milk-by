@@ -1,6 +1,7 @@
 
 import { Link } from "react-router-dom";
 
+import milkWorldLogo from "../assets/images/assetslogo.png";
 import EmptyState from "../components/EmptyState";
 import { useSiteContext } from "../hooks/useSiteContext";
 
@@ -59,25 +60,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="hero-visual" aria-hidden="true">
-            <div className="hero-visual__top">
-              <span>{messages.companyName}</span>
-              <span>01</span>
-            </div>
-
-            <div className="hero-visual__graphic">
-              <div className="hero-visual__ring hero-visual__ring--outer" />
-              <div className="hero-visual__ring hero-visual__ring--middle" />
-              <div className="hero-visual__ring hero-visual__ring--inner" />
-              <div className="hero-visual__line hero-visual__line--horizontal" />
-              <div className="hero-visual__line hero-visual__line--vertical" />
-            </div>
-
-            <div className="hero-visual__bottom">
-              <span>{messages.brand}</span>
-              <span>{messages.home.visualCaption}</span>
-            </div>
-          </div>
+          <div className="hero-visual">
+  <img
+    className="hero-visual__logo"
+    src={milkWorldLogo}
+    alt={messages.companyName}
+  />
+</div>
         </div>
       </section>
 

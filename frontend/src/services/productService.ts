@@ -328,21 +328,31 @@ export async function getProductCategories(
   );
 
   if (!Array.isArray(data)) {
-    throw new Error("Backend вернул некорректный список категорий");
+    throw new Error(
+      "Backend вернул некорректный список категорий"
+    );
   }
 
-  const names = data.filter(
-    (item): item is string =>
-      typeof item === "string" &&
-      item.trim().length > 0
-  );
-
-  return [...new Set(names)].map((name) => ({
-    id: name,
-    slug: name.trim().toLocaleLowerCase().replace(/\s+/g, "-"),
-    name,
-    parentId: null,
-  }));
+  return data
+    .filter(
+      (item): item is { id: number; name: string } =>
+        isRecord(item) &&
+        Number.isSafeInteger(Number(item.id)) &&
+        Number(item.id) > 0 &&
+        typeof item.name === "string" &&
+        item.name.trim().length > 0
+    )
+    .map((item) => ({
+      // ID оставляем названием категории,
+      // чтобы не нарушить связь с существующими товарами.
+      id: item.name.trim(),
+      slug: item.name
+        .trim()
+        .toLocaleLowerCase()
+        .replace(/\s+/g, "-"),
+      name: item.name.trim(),
+      parentId: null,
+    }));
 }
 
 // Одновременная загрузка товаров и категорий

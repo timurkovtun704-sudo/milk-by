@@ -1,4 +1,3 @@
-
 import type { Locale } from "./messages";
 
 export interface AdminApiMessages {
@@ -32,6 +31,9 @@ export interface AdminApiMessages {
   categoriesError: string;
   noCategories: string;
   categoryCreateSuccess: string;
+  categoryUpdateSuccess: string;
+  categoryDeleteSuccess: string;
+  confirmDeleteCategory: string;
   categoryName: string;
 }
 
@@ -70,6 +72,9 @@ export const adminApiMessages: Record<
     categoriesError: "Не удалось загрузить категории",
     noCategories: "Сначала создайте категорию",
     categoryCreateSuccess: "Категория успешно создана",
+    categoryUpdateSuccess: "Категория успешно обновлена",
+    categoryDeleteSuccess: "Категория успешно удалена",
+    confirmDeleteCategory: "Удалить эту категорию?",
     categoryName: "Название категории",
   },
 
@@ -104,6 +109,9 @@ export const adminApiMessages: Record<
     categoriesError: "Не ўдалося загрузіць катэгорыі",
     noCategories: "Спачатку стварыце катэгорыю",
     categoryCreateSuccess: "Катэгорыя паспяхова створана",
+    categoryUpdateSuccess: "Катэгорыя паспяхова абноўлена",
+    categoryDeleteSuccess: "Катэгорыя паспяхова выдалена",
+    confirmDeleteCategory: "Выдаліць гэтую катэгорыю?",
     categoryName: "Назва катэгорыі",
   },
 
@@ -138,6 +146,9 @@ export const adminApiMessages: Record<
     categoriesError: "Could not load categories",
     noCategories: "Create a category first",
     categoryCreateSuccess: "Category created successfully",
+    categoryUpdateSuccess: "Category updated successfully",
+    categoryDeleteSuccess: "Category deleted successfully",
+    confirmDeleteCategory: "Delete this category?",
     categoryName: "Category name",
   },
 
@@ -172,6 +183,9 @@ export const adminApiMessages: Record<
     categoriesError: "无法加载类别",
     noCategories: "请先创建类别",
     categoryCreateSuccess: "类别创建成功",
+    categoryUpdateSuccess: "类别更新成功",
+    categoryDeleteSuccess: "类别删除成功",
+    confirmDeleteCategory: "确定删除此类别吗？",
     categoryName: "类别名称",
   },
 };

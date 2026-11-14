@@ -20,11 +20,8 @@ import "../../styles/news.css";
 
 interface NewsArticleViewProps {
   article: NewsArticle;
-
   category?: NewsCategory;
-
   categories: readonly NewsCategory[];
-
   relatedArticles?: readonly NewsArticle[];
 }
 
@@ -43,10 +40,27 @@ export default function NewsArticleView({
     locale
   );
 
+  const seoTitle =
+    article.seo?.title?.trim() || article.title;
+
+  const seoDescription =
+    article.seo?.description ?? article.summary;
+
   useDocumentMetadata(
-    article.seo?.title?.trim() || article.title,
-    article.seo?.description ?? article.summary,
-    article.seo?.canonicalUrl
+    seoTitle,
+    seoDescription,
+    article.seo?.canonicalUrl,
+    {
+      ogTitle: article.seo?.ogTitle ?? seoTitle,
+      ogDescription:
+        article.seo?.ogDescription ?? seoDescription,
+      ogImageUrl:
+        article.seo?.ogImageUrl ??
+        article.coverImage?.url ??
+        null,
+      isIndexable: article.seo?.isIndexable,
+      isFollowable: article.seo?.isFollowable,
+    }
   );
 
   return (
@@ -81,7 +95,9 @@ export default function NewsArticleView({
             </span>
           )}
 
-          <h1>{article.title}</h1>
+          <h1>
+            {article.seo?.h1?.trim() || article.title}
+          </h1>
 
           {article.summary && (
             <p className="news-article__summary">
