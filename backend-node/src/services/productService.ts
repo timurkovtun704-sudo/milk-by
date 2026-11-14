@@ -146,3 +146,72 @@ export const deleteCategory = async (id: number) => {
 
     return { deleted: true };
 };
+
+
+export const getSubcategories = async (categoryId?: number) => {
+    let query = supabase
+        .from('subcategories')
+        .select('id, name, category_id')
+        .order('id', { ascending: true });
+
+    if (categoryId !== undefined) {
+        query = query.eq('category_id', categoryId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return data;
+};
+
+export const createSubcategory = async (
+    name: string,
+    categoryId: number
+) => {
+    const { data, error } = await supabase
+        .from('subcategories')
+        .insert({
+            name,
+            category_id: categoryId
+        })
+        .select('id, name, category_id')
+        .single();
+
+    if (error) throw error;
+
+    return data;
+};
+
+export const updateSubcategory = async (
+    id: number,
+    name: string,
+    categoryId: number
+) => {
+    const { data, error } = await supabase
+        .from('subcategories')
+        .update({
+            name,
+            category_id: categoryId
+        })
+        .eq('id', id)
+        .select('id, name, category_id')
+        .maybeSingle();
+
+    if (error) throw error;
+
+    return data;
+};
+
+export const deleteSubcategory = async (id: number) => {
+    const { data, error } = await supabase
+        .from('subcategories')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+
+    if (error) throw error;
+
+    return data;
+};
