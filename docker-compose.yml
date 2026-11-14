@@ -1,21 +1,39 @@
 services:
-  db:
-    image: postgres:16
-    container_name: milk-world-db
+  backend:
+    build:
+      context: ./backend-node
+      dockerfile: Dockerfile
+    container_name: milk-world-backend
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-milk_world}
-      POSTGRES_USER: ${POSTGRES_USER:-milk_world}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local}
-    ports:
-      - "5432:5432"
-    volumes:
-      - milk_world_postgres_data:/var/lib/postgresql/data
+      NODE_ENV: production
+      PORT: 3000
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+    expose:
+      - "3000"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-milk_world} -d ${POSTGRES_DB:-milk_world}"]
-      interval: 5s
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 15s
 
-volumes:
-  milk_world_postgres_data:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: milk-world-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
