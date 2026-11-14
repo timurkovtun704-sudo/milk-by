@@ -3,7 +3,6 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 
-
 import systemRoutes from "./routes/systemRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
