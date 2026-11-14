@@ -1,80 +1,267 @@
 
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import type { FormEvent } from "react";
 
 import AdminPageHeading from "../../components/admin/AdminPageHeading";
 
 import { useAdminContext } from "../../hooks/useAdminContext";
+import { useAuth } from "../../hooks/useAuth";
+
+import { adminApiMessages } from "../../i18n/adminApiMessages";
+
+import {
+  createAdminProduct,
+  deleteAdminProduct,
+  getAdminProducts,
+  getProductCategories,
+  updateAdminProduct,
+} from "../../services/productService";
+
+import type {
+  AdminProduct,
+  CreateAdminProductDto,
+  UpdateAdminProductDto,
+} from "../../services/productService";
 
 import type { ProductCategory } from "../../types/catalog";
 
+import "../../styles/admin.css";
+import "../../styles/admin-api.css";
+
+interface ProductFormState {
+  name: string;
+  description: string;
+  imageUrl: string;
+  category: string;
+  isActive: boolean;
+}
+
+const EMPTY_FORM: ProductFormState = {
+  name: "",
+  description: "",
+  imageUrl: "",
+  category: "",
+  isActive: true,
+};
+
 export default function AdminProductsPage() {
-  const { messages, notify } = useAdminContext();
+  const { locale, messages, notify } = useAdminContext();
+  const { accessToken, role } = useAuth();
+
+  const labels = adminApiMessages[locale];
+
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(
+    null
+  );
 
-  const [attributeRows, setAttributeRows] =
-    useState<number[]>([]);
+  const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
 
-  const [packagingRows, setPackagingRows] =
-    useState<number[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const [nextAttributeId, setNextAttributeId] = useState(0);
-  const [nextPackagingId, setNextPackagingId] = useState(0);
+  const canDelete = role === "admin";
 
-  // Пока реальных категорий нет.
-  // Они появятся после подключения API.
-  const categories: readonly ProductCategory[] = [];
+  const reload = useCallback(() => {
+    setReloadKey((current) => current + 1);
+  }, []);
 
-  function openForm() {
+  // Загрузка товаров и категорий из backend
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    async function loadData() {
+      if (!accessToken) {
+        setLoadError("Не найден токен авторизации");
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const [loadedProducts, loadedCategories] =
+          await Promise.all([
+            getAdminProducts(accessToken, controller.signal),
+            getProductCategories(controller.signal),
+          ]);
+
+        if (!active) {
+          return;
+        }
+
+        setProducts(loadedProducts);
+        setCategories(loadedCategories);
+      } catch (error) {
+        if (
+          !active ||
+          (error instanceof Error && error.name === "AbortError")
+        ) {
+          return;
+        }
+
+        console.error("Ошибка загрузки административных товаров:", error);
+
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : labels.loadError
+        );
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadData();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [accessToken, reloadKey, labels.loadError]);
+
+  function openCreateForm() {
+    setEditingProductId(null);
+
+    setForm({
+      ...EMPTY_FORM,
+      category: categories[0]?.name ?? "",
+    });
+
     setFormOpen(true);
-    setAttributeRows([]);
-    setPackagingRows([]);
-    setNextAttributeId(0);
-    setNextPackagingId(0);
+  }
+
+  function openEditForm(product: AdminProduct) {
+    setEditingProductId(product.id);
+
+    setForm({
+      name: product.name,
+      description: product.description ?? "",
+      imageUrl: product.imageUrl ?? "",
+      category: product.categoryId,
+      isActive: product.isActive,
+    });
+
+    setFormOpen(true);
   }
 
   function closeForm() {
     setFormOpen(false);
-    setAttributeRows([]);
-    setPackagingRows([]);
+    setEditingProductId(null);
+    setForm(EMPTY_FORM);
   }
 
-  function addAttribute() {
-    setAttributeRows((previous) => [
-      ...previous,
-      nextAttributeId,
-    ]);
-
-    setNextAttributeId((previous) => previous + 1);
-  }
-
-  function addPackaging() {
-    setPackagingRows((previous) => [
-      ...previous,
-      nextPackagingId,
-    ]);
-
-    setNextPackagingId((previous) => previous + 1);
-  }
-
-  function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+  function updateField<K extends keyof ProductFormState>(
+    key: K,
+    value: ProductFormState[K]
   ) {
+    setForm((previous) => ({
+      ...previous,
+      [key]: value,
+    }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (categories.length === 0) {
-      notify(
-        messages.products.noCategories,
-        "warning"
-      );
-
+    if (!accessToken) {
+      notify("Не найден токен авторизации", "warning");
       return;
     }
 
-    notify(
-      `${messages.feedback.formChecked} ${messages.feedback.notSaved}`,
-      "info"
-    );
+    if (!form.category) {
+      notify(labels.noCategories, "warning");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      if (editingProductId) {
+        const payload: UpdateAdminProductDto = {
+          name: form.name.trim(),
+          description: form.description.trim(),
+          image_url: form.imageUrl.trim(),
+          category: form.category,
+          is_active: form.isActive,
+        };
+
+        await updateAdminProduct(
+          editingProductId,
+          payload,
+          accessToken
+        );
+
+        notify(labels.updateSuccess, "success");
+      } else {
+        const payload: CreateAdminProductDto = {
+          name: form.name.trim(),
+          description: form.description.trim(),
+          image_url: form.imageUrl.trim(),
+          category: form.category,
+          is_active: form.isActive,
+        };
+
+        await createAdminProduct(payload, accessToken);
+
+        notify(labels.createSuccess, "success");
+      }
+
+      closeForm();
+      reload();
+    } catch (error) {
+      console.error("Ошибка сохранения товара:", error);
+
+      notify(
+        error instanceof Error
+          ? error.message
+          : labels.operationError,
+        "warning"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(product: AdminProduct) {
+    if (!accessToken || !canDelete) {
+      return;
+    }
+
+    if (!window.confirm(labels.confirmDelete)) {
+      return;
+    }
+
+    try {
+      await deleteAdminProduct(product.id, accessToken);
+
+      notify(labels.deleteSuccess, "success");
+      reload();
+    } catch (error) {
+      console.error("Ошибка удаления товара:", error);
+
+      notify(
+        error instanceof Error
+          ? error.message
+          : labels.operationError,
+        "warning"
+      );
+    }
   }
 
   return (
@@ -86,9 +273,8 @@ export default function AdminProductsPage() {
           <button
             className="admin-button admin-button--primary"
             type="button"
-            onClick={() =>
-              formOpen ? closeForm() : openForm()
-            }
+            onClick={openCreateForm}
+            disabled={categories.length === 0}
           >
             <span aria-hidden="true">+</span>
             {messages.products.addTitle}
@@ -96,12 +282,21 @@ export default function AdminProductsPage() {
         }
       />
 
+      {categories.length === 0 && !isLoading && (
+        <p className="admin-api-hint">
+          {labels.noCategories}
+        </p>
+      )}
+
       {formOpen && (
         <section className="admin-form-panel">
           <div className="admin-form-panel__heading">
             <div>
-              <h2>{messages.products.formTitle}</h2>
-              <p>{messages.products.noCategories}</p>
+              <h2>
+                {editingProductId
+                  ? labels.edit
+                  : labels.create}
+              </h2>
             </div>
 
             <button
@@ -109,370 +304,237 @@ export default function AdminProductsPage() {
               type="button"
               aria-label={messages.common.close}
               onClick={closeForm}
+              disabled={isSaving}
             >
               ×
             </button>
           </div>
 
-          <form
-            className="admin-form"
-            onSubmit={handleSubmit}
-          >
-            <section className="admin-form-section">
-              <h3>{messages.products.formTitle}</h3>
+          <form className="admin-form" onSubmit={handleSubmit}>
+            <div className="admin-field">
+              <label htmlFor="product-name">
+                {labels.name} *
+              </label>
 
-              <div className="admin-form__grid">
-                <div className="admin-field">
-                  <label htmlFor="product-name">
-                    {messages.products.name}
-                    <span>*</span>
-                  </label>
+              <input
+                id="product-name"
+                type="text"
+                value={form.name}
+                onChange={(event) =>
+                  updateField("name", event.currentTarget.value)
+                }
+                maxLength={200}
+                required
+                disabled={isSaving}
+              />
+            </div>
 
-                  <input
-                    id="product-name"
-                    name="name"
-                    type="text"
-                    required
-                    maxLength={200}
-                    placeholder={messages.products.name}
-                  />
-                </div>
+            <div className="admin-field">
+              <label htmlFor="product-description">
+                {labels.description} *
+              </label>
 
-                <div className="admin-field">
-                  <label htmlFor="product-slug">
-                    {messages.products.slug}
-                  </label>
+              <textarea
+                id="product-description"
+                value={form.description}
+                onChange={(event) =>
+                  updateField("description", event.currentTarget.value)
+                }
+                rows={5}
+                maxLength={10000}
+                required
+                disabled={isSaving}
+              />
+            </div>
 
-                  <input
-                    id="product-slug"
-                    name="slug"
-                    type="text"
-                    maxLength={200}
-                    placeholder={messages.products.slug}
-                  />
-                </div>
-              </div>
+            <div className="admin-field">
+              <label htmlFor="product-image-url">
+                {labels.imageUrl} *
+              </label>
 
-              <div className="admin-field">
-                <label htmlFor="product-category">
-                  {messages.products.category}
-                  <span>*</span>
-                </label>
+              <input
+                id="product-image-url"
+                type="url"
+                value={form.imageUrl}
+                onChange={(event) =>
+                  updateField("imageUrl", event.currentTarget.value)
+                }
+                placeholder="https://example.com/product.jpg"
+                required
+                disabled={isSaving}
+              />
+            </div>
 
-                <select
-                  id="product-category"
-                  name="categoryId"
-                  required
-                  disabled={categories.length === 0}
-                  defaultValue=""
-                >
-                  <option value="">
-                    {messages.common.selectOption}
-                  </option>
+            <div className="admin-field">
+              <label htmlFor="product-category">
+                {labels.category} *
+              </label>
 
-                  {categories.map((category) => (
-                    <option
-                      value={category.id}
-                      key={category.id}
-                    >
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+              <select
+                id="product-category"
+                value={form.category}
+                onChange={(event) =>
+                  updateField("category", event.currentTarget.value)
+                }
+                required
+                disabled={isSaving || categories.length === 0}
+              >
+                <option value="">
+                  {messages.common.selectOption}
+                </option>
 
-                <small>{messages.products.noCategories}</small>
-              </div>
-
-              <div className="admin-field">
-                <label htmlFor="product-description">
-                  {messages.products.descriptionField}
-                </label>
-
-                <textarea
-                  id="product-description"
-                  name="description"
-                  rows={5}
-                  maxLength={10000}
-                  placeholder={messages.products.descriptionField}
-                />
-              </div>
-            </section>
-
-            <section className="admin-form-section">
-              <h3>{messages.products.images}</h3>
-
-              <div className="admin-field">
-                <label htmlFor="product-images">
-                  {messages.products.images}
-                </label>
-
-                <input
-                  id="product-images"
-                  name="images"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                />
-
-                <small>{messages.products.imagesHelp}</small>
-              </div>
-            </section>
-
-            <section className="admin-form-section">
-              <div className="admin-form-section__heading">
-                <h3>{messages.products.characteristics}</h3>
-
-                <button
-                  className="admin-button admin-button--secondary"
-                  type="button"
-                  onClick={addAttribute}
-                >
-                  + {messages.common.addAttribute}
-                </button>
-              </div>
-
-              {attributeRows.map((rowId) => (
-                <div
-                  className="admin-dynamic-row"
-                  key={rowId}
-                >
-                  <div className="admin-field">
-                    <label
-                      htmlFor={`attribute-name-${rowId}`}
-                    >
-                      {messages.products.attributeName}
-                    </label>
-
-                    <input
-                      id={`attribute-name-${rowId}`}
-                      name={`attributes[${rowId}][name]`}
-                      type="text"
-                    />
-                  </div>
-
-                  <div className="admin-field">
-                    <label
-                      htmlFor={`attribute-value-${rowId}`}
-                    >
-                      {messages.products.attributeValue}
-                    </label>
-
-                    <input
-                      id={`attribute-value-${rowId}`}
-                      name={`attributes[${rowId}][value]`}
-                      type="text"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    className="admin-icon-button admin-icon-button--remove"
-                    aria-label={messages.common.remove}
-                    onClick={() =>
-                      setAttributeRows((previous) =>
-                        previous.filter((id) => id !== rowId)
-                      )
-                    }
+                {categories.map((category) => (
+                  <option
+                    key={category.id}
+                    value={category.name}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </section>
-
-            <section className="admin-form-section">
-              <div className="admin-form-section__heading">
-                <h3>{messages.products.packagings}</h3>
-
-                <button
-                  className="admin-button admin-button--secondary"
-                  type="button"
-                  onClick={addPackaging}
-                >
-                  + {messages.common.addPackaging}
-                </button>
-              </div>
-
-              {packagingRows.map((rowId) => (
-                <div
-                  className="admin-dynamic-group"
-                  key={rowId}
-                >
-                  <div className="admin-dynamic-group__heading">
-                    <strong>
-                      {messages.products.packagingName}
-                    </strong>
-
-                    <button
-                      type="button"
-                      className="admin-icon-button admin-icon-button--remove"
-                      aria-label={messages.common.remove}
-                      onClick={() =>
-                        setPackagingRows((previous) =>
-                          previous.filter((id) => id !== rowId)
-                        )
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="admin-form__grid admin-form__grid--three">
-                    <div className="admin-field">
-                      <label htmlFor={`packaging-name-${rowId}`}>
-                        {messages.products.packagingName}
-                      </label>
-
-                      <input
-                        id={`packaging-name-${rowId}`}
-                        name={`packagings[${rowId}][name]`}
-                        type="text"
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label htmlFor={`packaging-weight-${rowId}`}>
-                        {messages.products.weight}
-                      </label>
-
-                      <input
-                        id={`packaging-weight-${rowId}`}
-                        name={`packagings[${rowId}][weight]`}
-                        type="number"
-                        min="0"
-                        step="any"
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label htmlFor={`packaging-volume-${rowId}`}>
-                        {messages.products.volume}
-                      </label>
-
-                      <input
-                        id={`packaging-volume-${rowId}`}
-                        name={`packagings[${rowId}][volume]`}
-                        type="number"
-                        min="0"
-                        step="any"
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label htmlFor={`packaging-unit-${rowId}`}>
-                        {messages.products.unit}
-                      </label>
-
-                      <input
-                        id={`packaging-unit-${rowId}`}
-                        name={`packagings[${rowId}][unit]`}
-                        type="text"
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label htmlFor={`packaging-shelf-${rowId}`}>
-                        {messages.products.shelfLife}
-                      </label>
-
-                      <input
-                        id={`packaging-shelf-${rowId}`}
-                        name={`packagings[${rowId}][shelfLife]`}
-                        type="text"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </section>
-
-            <section className="admin-form-section">
-              <h3>{messages.products.status}</h3>
-
-              <div className="admin-field">
-                <label htmlFor="product-status">
-                  {messages.products.status}
-                </label>
-
-                <select
-                  id="product-status"
-                  name="status"
-                  defaultValue="draft"
-                >
-                  <option value="draft">
-                    {messages.products.draft}
+                    {category.name}
                   </option>
+                ))}
+              </select>
+            </div>
 
-                  <option value="published">
-                    {messages.products.published}
-                  </option>
+            <div className="admin-field">
+              <label htmlFor="product-status">
+                {labels.status}
+              </label>
 
-                  <option value="hidden">
-                    {messages.products.hidden}
-                  </option>
-                </select>
-              </div>
-            </section>
+              <select
+                id="product-status"
+                value={form.isActive ? "active" : "inactive"}
+                onChange={(event) =>
+                  updateField(
+                    "isActive",
+                    event.currentTarget.value === "active"
+                  )
+                }
+                disabled={isSaving}
+              >
+                <option value="active">
+                  {labels.active}
+                </option>
 
-            <section className="admin-form-section">
-              <h3>SEO</h3>
+                <option value="inactive">
+                  {labels.inactive}
+                </option>
+              </select>
+            </div>
 
-              <div className="admin-field">
-                <label htmlFor="product-seo-title">
-                  {messages.products.seoTitle}
-                </label>
-
-                <input
-                  id="product-seo-title"
-                  name="seoTitle"
-                  type="text"
-                  maxLength={70}
-                />
-              </div>
-
-              <div className="admin-field">
-                <label htmlFor="product-seo-description">
-                  {messages.products.seoDescription}
-                </label>
-
-                <textarea
-                  id="product-seo-description"
-                  name="seoDescription"
-                  rows={3}
-                  maxLength={180}
-                />
-              </div>
-            </section>
+            <p className="admin-api-hint">
+              {messages.products.imagesHelp}
+              {" "}
+              {messages.products.packagings}:{" "}
+              {messages.common.notAvailable}.
+            </p>
 
             <div className="admin-form__actions">
               <button
                 className="admin-button admin-button--primary"
                 type="submit"
+                disabled={isSaving || categories.length === 0}
               >
-                {messages.common.checkForm}
+                {isSaving ? labels.saving : labels.save}
               </button>
 
               <button
                 className="admin-button admin-button--secondary"
                 type="button"
                 onClick={closeForm}
+                disabled={isSaving}
               >
-                {messages.common.cancel}
+                {labels.cancel}
               </button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="admin-empty-list">
-        <div className="admin-empty-list__symbol">
-          PR
-        </div>
+      {isLoading ? (
+        <p role="status" className="admin-api-state">
+          {labels.loading}
+        </p>
+      ) : loadError ? (
+        <section className="admin-api-state" role="alert">
+          <h2>{labels.loadError}</h2>
+          <p>{loadError}</p>
 
-        <h2>{messages.common.noRecords}</h2>
+          <button
+            className="admin-button admin-button--secondary"
+            type="button"
+            onClick={reload}
+          >
+            {labels.retry}
+          </button>
+        </section>
+      ) : products.length === 0 ? (
+        <section className="admin-empty-list">
+          <h2>{labels.noProducts}</h2>
+        </section>
+      ) : (
+        <section className="admin-data-list">
+          {products.map((product) => (
+            <article
+              className="admin-data-card"
+              key={product.id}
+            >
+              <div className="admin-data-card__main">
+                {product.imageUrl && (
+                  <img
+                    className="admin-data-card__image"
+                    src={product.imageUrl}
+                    alt=""
+                    loading="lazy"
+                  />
+                )}
 
-        <p>{messages.common.noRecordsDescription}</p>
-      </section>
+                <div className="admin-data-card__content">
+                  <h2>{product.name}</h2>
+
+                  <p>{product.description}</p>
+
+                  <div className="admin-data-card__meta">
+                    <span>{product.categoryId}</span>
+
+                    <span
+                      className={
+                        product.isActive
+                          ? "admin-status admin-status--active"
+                          : "admin-status admin-status--inactive"
+                      }
+                    >
+                      {product.isActive
+                        ? labels.active
+                        : labels.inactive}
+                    </span>
+
+                    <span>ID: {product.id}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-data-card__actions">
+                <button
+                  className="admin-button admin-button--secondary"
+                  type="button"
+                  onClick={() => openEditForm(product)}
+                >
+                  {labels.edit}
+                </button>
+
+                {canDelete && (
+                  <button
+                    className="admin-button admin-button--danger"
+                    type="button"
+                    onClick={() => void handleDelete(product)}
+                  >
+                    {labels.delete}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

@@ -1,0 +1,147 @@
+
+.admin-api-state {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  margin-top: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+}
+
+.admin-api-state h2,
+.admin-api-state p {
+  margin: 0;
+}
+
+.admin-api-hint {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 3px solid #b18a43;
+  background: rgba(177, 138, 67, 0.08);
+  line-height: 1.5;
+}
+
+.admin-data-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.admin-data-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.admin-data-card__main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-data-card__image {
+  width: 88px;
+  height: 88px;
+  flex: 0 0 88px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f5f5f5;
+}
+
+.admin-data-card__content {
+  min-width: 0;
+}
+
+.admin-data-card__content h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.admin-data-card__content > p {
+  margin: 0 0 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.admin-data-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.admin-data-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.admin-button--danger {
+  border-color: #b84e4e;
+  background: #b84e4e;
+  color: #fff;
+}
+
+.admin-button--danger:hover {
+  background: #963b3b;
+}
+
+.admin-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.admin-status--active {
+  background: #e6f2e9;
+  color: #27623a;
+}
+
+.admin-status--inactive {
+  background: #ededed;
+  color: #555;
+}
+
+@media (max-width: 700px) {
+  .admin-data-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-data-card__main {
+    align-items: flex-start;
+  }
+
+  .admin-data-card__actions {
+    width: 100%;
+  }
+
+  .admin-data-card__actions button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-data-card__main {
+    flex-direction: column;
+  }
+
+  .admin-data-card__image {
+    width: 100%;
+    height: 150px;
+    flex-basis: auto;
+  }
+}

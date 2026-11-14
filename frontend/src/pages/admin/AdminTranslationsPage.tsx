@@ -11,7 +11,7 @@ import type { Locale } from "../../i18n/messages";
 
 const languageLabels: Record<Locale, string> = {
   ru: "Русский",
-  be: "Белорусский",
+  be: "Беларуская",
   en: "English",
   zh: "中文",
 };

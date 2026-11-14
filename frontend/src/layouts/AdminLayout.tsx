@@ -17,6 +17,8 @@ import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminHeader from "../components/admin/AdminHeader";
 import AdminNotice from "../components/admin/AdminNotice";
 
+import { useAuth } from "../hooks/useAuth";
+
 import {
   isLocale,
 } from "../i18n/messages";
@@ -24,6 +26,10 @@ import {
 import {
   adminMessages,
 } from "../i18n/adminMessages";
+
+import {
+  authMessages,
+} from "../i18n/authMessages";
 
 import type { Locale } from "../i18n/messages";
 
@@ -33,12 +39,20 @@ import type {
 } from "../types/admin";
 
 import "../styles/admin.css";
+import "../styles/auth.css";
 
 export default function AdminLayout() {
   const { locale: localeParam } = useParams();
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  const {
+    user,
+    role,
+    isAuthenticated,
+    logout,
+  } = useAuth();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -50,6 +64,7 @@ export default function AdminLayout() {
     : "ru";
 
   const messages = adminMessages[locale];
+  const authLabels = authMessages[locale];
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -80,8 +95,39 @@ export default function AdminLayout() {
     );
   }
 
+  // Проверка локали
   if (!isLocale(localeParam)) {
-    return <Navigate to="/ru/admin" replace />;
+    return <Navigate to="/ru/admin/login" replace />;
+  }
+
+  // Защита административной панели от неавторизованных пользователей
+  if (!isAuthenticated) {
+    return (
+      <Navigate
+        to={`/${locale}/admin/login`}
+        replace
+        state={{
+          from: location.pathname + location.search,
+        }}
+      />
+    );
+  }
+
+  // Допускаются только администратор и редактор
+  if (role !== "admin" && role !== "editor") {
+    return (
+      <main className="admin-access-denied">
+        <h1>{authLabels.accessDenied}</h1>
+
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={logout}
+        >
+          {authLabels.logout}
+        </button>
+      </main>
+    );
   }
 
   return (
@@ -102,6 +148,30 @@ export default function AdminLayout() {
             setSidebarOpen((current) => !current)
           }
         />
+
+        {/* Информация о текущей административной сессии */}
+        <div className="admin-session-bar">
+          <span className="admin-session-bar__identity">
+            {user?.email ?? user?.id}
+          </span>
+
+          <span className="admin-session-bar__role">
+            {role}
+          </span>
+
+          <button
+            type="button"
+            className="admin-session-bar__logout"
+            onClick={() => {
+              logout();
+              navigate(`/${locale}/admin/login`, {
+                replace: true,
+              });
+            }}
+          >
+            {authLabels.logout}
+          </button>
+        </div>
 
         <main className="admin-content">
           <Outlet

@@ -11,6 +11,7 @@ import NewsPage from "./pages/NewsPage";
 import NewsDetailPage from "./pages/NewsDetailPage";
 import InfoPage from "./pages/InfoPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
@@ -27,8 +28,13 @@ function App() {
         element={<Navigate to="/ru" replace />}
       />
 
-      {/* Administrative panel */}
+      {/* Страница входа в административную панель */}
+      <Route
+        path="/:locale/admin/login"
+        element={<AdminLoginPage />}
+      />
 
+      {/* Administrative panel */}
       <Route
         path="/:locale/admin"
         element={<AdminLayout />}
@@ -65,7 +71,6 @@ function App() {
       </Route>
 
       {/* Public website */}
-
       <Route
         path="/:locale"
         element={<SiteLayout />}
