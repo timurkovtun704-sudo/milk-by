@@ -10,8 +10,10 @@ import NewsCard from "../components/news/NewsCard";
 
 import { useSiteContext } from "../hooks/useSiteContext";
 import { useNews } from "../hooks/useNews";
+import { useNewsData } from "../hooks/useNewsData";
 
 import { newsMessages } from "../i18n/newsMessages";
+import { newsDataMessages } from "../i18n/newsDataMessages";
 
 import "../styles/news.css";
 
@@ -19,10 +21,21 @@ export default function NewsPage() {
   const { locale, messages } = useSiteContext();
 
   const labels = newsMessages[locale];
+  const dataLabels = newsDataMessages[locale];
 
-  // Источники данных пока пустые.
-  // Впоследствии сюда будут переданы ответы реального API.
-  const news = useNews();
+  // Загружаем новости и категории из backend API
+  const {
+    articles,
+    categories,
+    isLoading,
+    error,
+  } = useNewsData();
+
+  // Передаём полученные данные существующему хуку фильтрации
+  const news = useNews({
+    articles,
+    categories,
+  });
 
   const categoryMap = useMemo(
     () =>
@@ -67,7 +80,7 @@ export default function NewsPage() {
           />
         </div>
 
-        {news.archiveYears.length > 0 && (
+        {!isLoading && !error && news.archiveYears.length > 0 && (
           <NewsArchive
             years={news.archiveYears}
             selectedYear={news.year}
@@ -77,66 +90,79 @@ export default function NewsPage() {
         )}
 
         <div className="news-results">
-          <div
-            className="news-results__heading"
-            aria-live="polite"
-          >
-            <p>
-              {labels.resultsCount.replace(
-                "{count}",
-                String(news.resultCount)
-              )}
+          {isLoading ? (
+            <p className="news-data-status" role="status">
+              {dataLabels.loading}
             </p>
-
-            {news.hasActiveCriteria && (
-              <button
-                className="news-results__reset"
-                type="button"
-                onClick={news.clearFilters}
-              >
-                {labels.clearFilters}
-              </button>
-            )}
-          </div>
-
-          {news.totalCount === 0 ? (
+          ) : error ? (
             <EmptyState
-              title={messages.news.empty.title}
-              description={messages.news.empty.description}
-            />
-          ) : news.filteredArticles.length === 0 ? (
-            <EmptyState
-              title={labels.noResultsTitle}
-              description={labels.noResultsDescription}
+              title={dataLabels.loadErrorTitle}
+              description={dataLabels.loadErrorDescription}
             />
           ) : (
             <>
-              <div className="news-grid">
-                {news.visibleArticles.map((article) => (
-                  <NewsCard
-                    key={article.id}
-                    article={article}
-                    category={
-                      article.categoryId
-                        ? categoryMap.get(article.categoryId)
-                        : undefined
-                    }
-                    locale={locale}
-                    messages={labels}
-                  />
-                ))}
+              <div
+                className="news-results__heading"
+                aria-live="polite"
+              >
+                <p>
+                  {labels.resultsCount.replace(
+                    "{count}",
+                    String(news.resultCount)
+                  )}
+                </p>
+
+                {news.hasActiveCriteria && (
+                  <button
+                    className="news-results__reset"
+                    type="button"
+                    onClick={news.clearFilters}
+                  >
+                    {labels.clearFilters}
+                  </button>
+                )}
               </div>
 
-              {news.canLoadMore && (
-                <div className="news-load-more">
-                  <button
-                    className="button button--secondary"
-                    type="button"
-                    onClick={news.loadMore}
-                  >
-                    {labels.loadMore}
-                  </button>
-                </div>
+              {news.totalCount === 0 ? (
+                <EmptyState
+                  title={messages.news.empty.title}
+                  description={messages.news.empty.description}
+                />
+              ) : news.filteredArticles.length === 0 ? (
+                <EmptyState
+                  title={labels.noResultsTitle}
+                  description={labels.noResultsDescription}
+                />
+              ) : (
+                <>
+                  <div className="news-grid">
+                    {news.visibleArticles.map((article) => (
+                      <NewsCard
+                        key={article.id}
+                        article={article}
+                        category={
+                          article.categoryId
+                            ? categoryMap.get(article.categoryId)
+                            : undefined
+                        }
+                        locale={locale}
+                        messages={labels}
+                      />
+                    ))}
+                  </div>
+
+                  {news.canLoadMore && (
+                    <div className="news-load-more">
+                      <button
+                        className="button button--secondary"
+                        type="button"
+                        onClick={news.loadMore}
+                      >
+                        {labels.loadMore}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

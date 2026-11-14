@@ -1,0 +1,58 @@
+.admin-system-status__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-system-status__content small {
+  display: block;
+  margin-top: 6px;
+  color: var(--admin-text-muted, #777);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-status__indicator--checking {
+  background: #d69e36;
+}
+
+.admin-status__indicator--online {
+  background: #269b62;
+}
+
+.admin-status__indicator--offline {
+  background: #d64545;
+}
+
+.admin-status__badge--checking {
+  background: #fff3d6;
+  color: #8a5b00;
+}
+
+.admin-status__badge--online {
+  background: #def5e8;
+  color: #176b3c;
+}
+
+.admin-status__badge--offline {
+  background: #fde5e5;
+  color: #a52727;
+}
+
+.admin-system-status__retry {
+  padding: 9px 14px;
+  border: 1px solid var(--admin-border, #ddd);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-system-status__retry:hover:not(:disabled) {
+  background: var(--admin-hover, #f3f3f3);
+}
+
+.admin-system-status__retry:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

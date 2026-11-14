@@ -9,24 +9,68 @@ import ProductCard from "../components/catalog/ProductCard";
 
 import { useSiteContext } from "../hooks/useSiteContext";
 import { useCatalog } from "../hooks/useCatalog";
+import { useCatalogData } from "../hooks/useCatalogData";
 
 import { catalogMessages } from "../i18n/catalogMessages";
+import { catalogDataMessages } from "../i18n/catalogDataMessages";
 
-import type { CatalogSortOption } from "../types/catalog";
+import type {
+  CatalogFilterDefinition,
+  CatalogSortOption,
+} from "../types/catalog";
 
 import "../styles/catalog.css";
+
+// Названия фильтра жирности на четырёх языках
+const FAT_CONTENT_LABELS = {
+  ru: "Жирность",
+  be: "Тлустасць",
+  en: "Fat content",
+  zh: "脂肪含量",
+} as const;
 
 export default function ProductsPage() {
   const { locale, messages } = useSiteContext();
 
   const labels = catalogMessages[locale];
+  const dataLabels = catalogDataMessages[locale];
 
   const [mobileFiltersOpen, setMobileFiltersOpen] =
     useState(false);
 
-  // Пока все коллекции пустые.
-  // В будущем сюда будут передаваться данные из API.
-  const catalog = useCatalog();
+  // Загружаем реальные товары и категории из backend
+  const catalogData = useCatalogData();
+
+  // Формируем доступные фильтры на основании полученных данных
+  const filterDefinitions = useMemo<
+    CatalogFilterDefinition[]
+  >(() => {
+    const hasFatContent = catalogData.products.some(
+      (product) =>
+        typeof product.attributes?.fatContent === "number"
+    );
+
+    if (!hasFatContent) {
+      return [];
+    }
+
+    return [
+      {
+        id: "fat-content",
+        key: "fatContent",
+        label: FAT_CONTENT_LABELS[locale],
+        type: "range",
+        unit: "%",
+      },
+    ];
+  }, [catalogData.products, locale]);
+
+  // Сохраняем существующую логику каталога
+  const catalog = useCatalog({
+    products: catalogData.products,
+    categories: catalogData.categories,
+    filterDefinitions,
+  });
 
   const categoryMap = useMemo(
     () =>
@@ -70,7 +114,10 @@ export default function ProductsPage() {
             <select
               id="catalog-sort"
               value={catalog.sort}
-              disabled={catalog.totalProducts === 0}
+              disabled={
+                catalogData.isLoading ||
+                catalog.totalProducts === 0
+              }
               onChange={(event) =>
                 catalog.setSort(
                   event.currentTarget.value as CatalogSortOption
@@ -139,10 +186,12 @@ export default function ProductsPage() {
               aria-live="polite"
             >
               <p>
-                {labels.resultsCount.replace(
-                  "{count}",
-                  String(catalog.resultCount)
-                )}
+                {catalogData.isLoading
+                  ? dataLabels.loading
+                  : labels.resultsCount.replace(
+                      "{count}",
+                      String(catalog.resultCount)
+                    )}
               </p>
 
               {catalog.hasActiveCriteria && (
@@ -156,7 +205,26 @@ export default function ProductsPage() {
               )}
             </div>
 
-            {catalog.totalProducts === 0 ? (
+            {catalogData.isLoading ? (
+              <p role="status">
+                {dataLabels.loading}
+              </p>
+            ) : catalogData.hasError ? (
+              <div role="alert">
+                <EmptyState
+                  title={dataLabels.errorTitle}
+                  description={dataLabels.errorDescription}
+                />
+
+                <button
+                  type="button"
+                  className="button button--secondary"
+                  onClick={catalogData.reload}
+                >
+                  {dataLabels.retry}
+                </button>
+              </div>
+            ) : catalog.totalProducts === 0 ? (
               <EmptyState
                 title={messages.catalog.empty.title}
                 description={messages.catalog.empty.description}

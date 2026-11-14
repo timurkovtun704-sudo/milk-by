@@ -1,22 +1,236 @@
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import type { FormEvent } from "react";
 
 import AdminPageHeading from "../../components/admin/AdminPageHeading";
 
 import { useAdminContext } from "../../hooks/useAdminContext";
+import { useAuth } from "../../hooks/useAuth";
+
+import { adminApiMessages } from "../../i18n/adminApiMessages";
+
+import {
+  createCategory,
+  deleteCategory,
+  getAdminCategories,
+  updateCategory,
+} from "../../services/categoryService";
+
+import type { ProductCategory } from "../../types/catalog";
+
+import "../../styles/admin.css";
+import "../../styles/admin-api.css";
 
 export default function AdminCategoriesPage() {
-  const { messages, notify } = useAdminContext();
+  const { locale, messages, notify } = useAdminContext();
+  const { accessToken, role } = useAuth();
+
+  const labels = adminApiMessages[locale];
+
+  const canDelete = role === "admin";
+
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] =
+    useState<string | null>(null);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const [categoryName, setCategoryName] = useState("");
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] =
+    useState<string | null>(null);
+
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Загрузка категорий с числовыми ID
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    async function loadCategories() {
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const result = await getAdminCategories(
+          controller.signal
+        );
+
+        if (active) {
+          setCategories(result);
+        }
+      } catch (error) {
+        if (
+          !active ||
+          (error instanceof Error &&
+            error.name === "AbortError")
+        ) {
+          return;
+        }
+
+        console.error(
+          "Ошибка загрузки категорий:",
+          error
+        );
+
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : labels.categoriesError
+        );
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadCategories();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [reloadKey, labels.categoriesError]);
+
+  function openCreateForm() {
+    setEditingCategoryId(null);
+    setCategoryName("");
+    setFormOpen(true);
+  }
+
+  function openEditForm(category: ProductCategory) {
+    setEditingCategoryId(category.id);
+    setCategoryName(category.name);
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingCategoryId(null);
+    setCategoryName("");
+  }
+
+  // Создание или переименование категории
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
-    notify(
-      `${messages.feedback.formChecked} ${messages.feedback.notSaved}`,
-      "info"
+    if (!accessToken) {
+      notify("Не найден токен авторизации", "warning");
+      return;
+    }
+
+    const trimmedName = categoryName.trim();
+
+    if (!trimmedName) {
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      if (editingCategoryId) {
+        await updateCategory(
+          editingCategoryId,
+          { name: trimmedName },
+          accessToken
+        );
+
+        notify(
+          labels.categoryUpdateSuccess,
+          "success"
+        );
+      } else {
+        await createCategory(
+          { name: trimmedName },
+          accessToken
+        );
+
+        notify(
+          labels.categoryCreateSuccess,
+          "success"
+        );
+      }
+
+      closeForm();
+
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      console.error(
+        "Ошибка сохранения категории:",
+        error
+      );
+
+      notify(
+        error instanceof Error
+          ? error.message
+          : labels.operationError,
+        "warning"
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // Удаление категории
+  async function handleDelete(
+    category: ProductCategory
+  ) {
+    if (!accessToken || !canDelete) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${labels.confirmDeleteCategory}\n\n${category.name}`
     );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCategoryId(category.id);
+
+    try {
+      await deleteCategory(
+        category.id,
+        accessToken
+      );
+
+      notify(
+        labels.categoryDeleteSuccess,
+        "success"
+      );
+
+      if (editingCategoryId === category.id) {
+        closeForm();
+      }
+
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      console.error(
+        "Ошибка удаления категории:",
+        error
+      );
+
+      notify(
+        error instanceof Error
+          ? error.message
+          : labels.operationError,
+        "warning"
+      );
+    } finally {
+      setDeletingCategoryId(null);
+    }
   }
 
   return (
@@ -28,7 +242,8 @@ export default function AdminCategoriesPage() {
           <button
             className="admin-button admin-button--primary"
             type="button"
-            onClick={() => setFormOpen((current) => !current)}
+            onClick={openCreateForm}
+            disabled={isSaving || deletingCategoryId !== null}
           >
             <span aria-hidden="true">+</span>
             {messages.categories.addTitle}
@@ -40,15 +255,19 @@ export default function AdminCategoriesPage() {
         <section className="admin-form-panel">
           <div className="admin-form-panel__heading">
             <div>
-              <h2>{messages.categories.formTitle}</h2>
-              <p>{messages.common.frontendModeDescription}</p>
+              <h2>
+                {editingCategoryId
+                  ? labels.edit
+                  : messages.categories.formTitle}
+              </h2>
             </div>
 
             <button
               className="admin-icon-button"
               type="button"
               aria-label={messages.common.close}
-              onClick={() => setFormOpen(false)}
+              onClick={closeForm}
+              disabled={isSaving}
             >
               ×
             </button>
@@ -58,102 +277,146 @@ export default function AdminCategoriesPage() {
             className="admin-form"
             onSubmit={handleSubmit}
           >
-            <div className="admin-form__grid">
-              <div className="admin-field">
-                <label htmlFor="category-name">
-                  {messages.categories.name}
-                  <span>*</span>
-                </label>
-
-                <input
-                  id="category-name"
-                  name="name"
-                  type="text"
-                  maxLength={150}
-                  required
-                  placeholder={messages.categories.name}
-                />
-              </div>
-
-              <div className="admin-field">
-                <label htmlFor="category-slug">
-                  {messages.categories.slug}
-                </label>
-
-                <input
-                  id="category-slug"
-                  name="slug"
-                  type="text"
-                  maxLength={180}
-                  placeholder={messages.categories.slug}
-                />
-              </div>
-            </div>
-
             <div className="admin-field">
-              <label htmlFor="category-parent">
-                {messages.categories.parent}
+              <label htmlFor="category-name">
+                {labels.categoryName} *
               </label>
 
-              <select
-                id="category-parent"
-                name="parentId"
-                defaultValue=""
-                disabled
-              >
-                <option value="">
-                  {messages.categories.rootCategory}
-                </option>
-              </select>
-
-              <small>
-                {messages.categories.noParentOptions}
-              </small>
-            </div>
-
-            <div className="admin-field">
-              <label htmlFor="category-description">
-                {messages.categories.descriptionField}
-              </label>
-
-              <textarea
-                id="category-description"
-                name="description"
-                rows={4}
-                maxLength={2000}
-                placeholder={messages.categories.descriptionField}
+              <input
+                id="category-name"
+                name="name"
+                type="text"
+                value={categoryName}
+                onChange={(event) =>
+                  setCategoryName(
+                    event.currentTarget.value
+                  )
+                }
+                maxLength={150}
+                required
+                disabled={isSaving}
+                placeholder={labels.categoryName}
               />
             </div>
+
+            <p className="admin-api-hint">
+              {messages.categories.noParentOptions}
+            </p>
 
             <div className="admin-form__actions">
               <button
                 className="admin-button admin-button--primary"
                 type="submit"
+                disabled={
+                  isSaving ||
+                  !categoryName.trim() ||
+                  deletingCategoryId !== null
+                }
               >
-                {messages.common.checkForm}
+                {isSaving
+                  ? labels.saving
+                  : labels.save}
               </button>
 
               <button
                 className="admin-button admin-button--secondary"
                 type="button"
-                onClick={() => setFormOpen(false)}
+                onClick={closeForm}
+                disabled={isSaving}
               >
-                {messages.common.cancel}
+                {labels.cancel}
               </button>
             </div>
           </form>
         </section>
       )}
 
-      <section className="admin-empty-list">
-        <div className="admin-empty-list__symbol">
-          CT
-        </div>
+      {isLoading ? (
+        <p
+          className="admin-api-state"
+          role="status"
+        >
+          {labels.categoriesLoading}
+        </p>
+      ) : loadError ? (
+        <section
+          className="admin-api-state"
+          role="alert"
+        >
+          <h2>{labels.categoriesError}</h2>
+          <p>{loadError}</p>
 
-        <h2>{messages.categories.noCategoriesTitle}</h2>
+          <button
+            className="admin-button admin-button--secondary"
+            type="button"
+            onClick={() =>
+              setReloadKey((current) => current + 1)
+            }
+          >
+            {labels.retry}
+          </button>
+        </section>
+      ) : categories.length === 0 ? (
+        <section className="admin-empty-list">
+          <h2>
+            {messages.categories.noCategoriesTitle}
+          </h2>
 
-        <p>{messages.categories.noCategoriesDescription}</p>
-      </section>
+          <p>
+            {messages.categories.noCategoriesDescription}
+          </p>
+        </section>
+      ) : (
+        <section className="admin-data-list">
+          {categories.map((category) => (
+            <article
+              className="admin-data-card"
+              key={category.id}
+            >
+              <div className="admin-data-card__content">
+                <h2>{category.name}</h2>
+
+                <div className="admin-data-card__meta">
+                  <span>URL: {category.slug}</span>
+                  <span>ID: {category.id}</span>
+                </div>
+              </div>
+
+              <div className="admin-data-card__actions">
+                <button
+                  className="admin-button admin-button--secondary"
+                  type="button"
+                  onClick={() => openEditForm(category)}
+                  disabled={
+                    isSaving ||
+                    deletingCategoryId !== null
+                  }
+                >
+                  {labels.edit}
+                </button>
+
+                {canDelete && (
+                  <button
+                    className="admin-button admin-button--danger"
+                    type="button"
+                    onClick={() =>
+                      void handleDelete(category)
+                    }
+                    disabled={
+                      deletingCategoryId !== null ||
+                      isSaving
+                    }
+                  >
+                    {deletingCategoryId === category.id
+                      ? labels.saving
+                      : labels.delete}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
-
 import EmptyState from "../components/EmptyState";
+import B2BContactForm from "../components/b2b/B2BContactForm";
+import ContactInformation from "../components/ContactInformation";
+
 import { useSiteContext } from "../hooks/useSiteContext";
 
 import type { InfoPageKey } from "../i18n/messages";
@@ -9,8 +11,12 @@ interface InfoPageProps {
 }
 
 export default function InfoPage({ page }: InfoPageProps) {
-  const { messages } = useSiteContext();
+  const { locale, messages } = useSiteContext();
+
   const pageContent = messages.info[page];
+
+  const showContactForm =
+    page === "export" || page === "partners";
 
   return (
     <section className="inner-page">
@@ -27,10 +33,16 @@ export default function InfoPage({ page }: InfoPageProps) {
           </p>
         </header>
 
-        <EmptyState
-          title={pageContent.empty.title}
-          description={pageContent.empty.description}
-        />
+        {page === "contacts" ? (
+          <ContactInformation locale={locale} />
+        ) : showContactForm ? (
+          <B2BContactForm locale={locale} />
+        ) : (
+          <EmptyState
+            title={pageContent.empty.title}
+            description={pageContent.empty.description}
+          />
+        )}
       </div>
     </section>
   );

@@ -1,0 +1,137 @@
+
+.auth-page {
+  box-sizing: border-box;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #f4f6f3;
+}
+
+.auth-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 460px;
+  padding: clamp(24px, 5vw, 40px);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.07);
+}
+
+.auth-card__header {
+  margin-bottom: 28px;
+}
+
+.auth-card__header h1 {
+  margin: 0 0 12px;
+  line-height: 1.2;
+}
+
+.auth-card__header > p:last-child {
+  line-height: 1.6;
+  opacity: 0.75;
+}
+
+.auth-form {
+  display: grid;
+  gap: 20px;
+}
+
+.auth-form__field {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form__field label {
+  font-weight: 600;
+}
+
+.auth-form__field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #d5d9d5;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+  font: inherit;
+}
+
+.auth-form__field input:focus-visible {
+  outline: 2px solid #477c55;
+  outline-offset: 2px;
+}
+
+.auth-form__submit {
+  width: 100%;
+  min-height: 46px;
+}
+
+.auth-card__error {
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid #bd5555;
+  border-radius: 8px;
+  color: #8e2929;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.auth-card__back {
+  display: inline-block;
+  margin-top: 24px;
+}
+
+.admin-session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 10px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.admin-session-bar__identity {
+  margin-right: auto;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-session-bar__role {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.admin-session-bar__logout {
+  padding: 8px 14px;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-access-denied {
+  box-sizing: border-box;
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .admin-session-bar {
+    justify-content: space-between;
+    padding: 10px 16px;
+  }
+
+  .admin-session-bar__identity {
+    width: 100%;
+  }
+}
