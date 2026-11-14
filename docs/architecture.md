@@ -9,6 +9,6 @@ Backend предоставляет REST API, выполняет бизнес-л�
 ## Локальные адреса
 
 - Frontend: http://localhost:5173
-- Backend: http://localhost:8080
-- Health check: http://localhost:8080/api/health
+- Backend: http://localhost:3000
+- Health check: http://localhost:3000/api/health
 - PostgreSQL: localhost:5432
