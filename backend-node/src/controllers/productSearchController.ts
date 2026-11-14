@@ -1,8 +1,8 @@
+import type { Request, Response } from 'express';
 
-import { Request, Response } from 'express';
 import {
     searchProducts,
-    ProductSearchOptions,
+    type ProductSearchOptions,
 } from '../services/productSearchService.js';
 
 export const searchProductsController = async (
@@ -13,6 +13,7 @@ export const searchProductsController = async (
         const page = Number(req.query.page ?? 1);
         const limit = Number(req.query.limit ?? 12);
 
+        // Проверка параметров пагинации
         if (
             !Number.isInteger(page) ||
             !Number.isInteger(limit) ||
@@ -26,34 +27,70 @@ export const searchProductsController = async (
             });
         }
 
-        const sortBy = req.query.sortBy === 'created_at'
-            ? 'created_at'
-            : 'name';
+        // Сортировка
+        const sortBy =
+            req.query.sortBy === 'created_at'
+                ? 'created_at'
+                : 'name';
 
-        const order = req.query.order === 'desc'
-            ? 'desc'
-            : 'asc';
+        const order =
+            req.query.order === 'desc'
+                ? 'desc'
+                : 'asc';
 
-        const fatContent = req.query.fatContent !== undefined
-            ? Number(req.query.fatContent)
-            : undefined;
+        // Массовая доля жира
+        const fatProcent =
+            req.query.fatProcent !== undefined
+                ? Number(req.query.fatProcent)
+                : undefined;
 
         if (
-            fatContent !== undefined &&
-            (!Number.isFinite(fatContent) ||
-                fatContent < 0 ||
-                fatContent > 100)
+            fatProcent !== undefined &&
+            (
+                !Number.isFinite(fatProcent) ||
+                fatProcent < 0 ||
+                fatProcent > 100
+            )
         ) {
             return res.status(400).json({
                 success: false,
-                message: 'Некорректное значение жирности',
+                message: 'Некорректное значение массовой доли жира',
             });
         }
 
+        // Получение текстовых параметров поиска
+        const readTextQuery = (value: unknown): string => {
+            return typeof value === 'string'
+                ? value.trim()
+                : '';
+        };
+
+        // Формирование параметров поиска
         const options: ProductSearchOptions = {
-            search: String(req.query.search ?? ''),
-            category: String(req.query.category ?? ''),
-            fatContent,
+            search: readTextQuery(req.query.search),
+
+            category: readTextQuery(req.query.category),
+
+            fatProcent,
+
+            weight: readTextQuery(req.query.weight),
+
+            storageConditions: readTextQuery(
+                req.query.storageConditions
+            ),
+
+            shelfLife: readTextQuery(
+                req.query.shelfLife
+            ),
+
+            energyValue: readTextQuery(
+                req.query.energyValue
+            ),
+
+            itemsPerCase: readTextQuery(
+                req.query.itemsPerCase
+            ),
+
             sortBy,
             order,
             page,
@@ -73,7 +110,7 @@ export const searchProductsController = async (
             },
         });
     } catch (error) {
-        console.error('PRODUCT SEARCH ERROR:', error);
+        console.error('[products] Ошибка поиска товаров:', error);
 
         return res.status(500).json({
             success: false,

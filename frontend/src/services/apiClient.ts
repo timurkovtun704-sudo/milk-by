@@ -30,25 +30,70 @@ export interface ApiRequestOptions
   token?: string | null;
 }
 
-// Извлечение сообщения из ответа сервера
+// Преобразование ответа сервера в понятное сообщение
 function getErrorMessage(
   data: unknown,
   status: number
 ): string {
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    "message" in data &&
-    typeof data.message === "string"
-  ) {
-    return data.message;
+  if (typeof data === "string" && data.trim()) {
+    return `${data.trim()} (HTTP ${status})`;
   }
 
-  if (
-    typeof data === "string" &&
-    data.trim().length > 0
-  ) {
-    return data;
+  if (typeof data !== "object" || data === null) {
+    return `Ошибка запроса. HTTP ${status}`;
+  }
+
+  const response = data as Record<string, unknown>;
+
+  const message =
+    typeof response.message === "string"
+      ? response.message
+      : "";
+
+  const detailFields = [
+    "error",
+    "details",
+    "hint",
+    "code",
+  ];
+
+  const details = detailFields
+    .filter((field) => {
+      const value = response[field];
+
+      return (
+        typeof value === "string" ||
+        typeof value === "number"
+      );
+    })
+    .map((field) => `${field}: ${String(response[field])}`);
+
+  // Если сервер вернул только общее сообщение,
+  // дополнительно показываем остальные данные ответа.
+  const isGenericMessage =
+    /^(ошибка сервера|internal server error|server error)$/i.test(
+      message.trim()
+    );
+
+  if (isGenericMessage && details.length === 0) {
+    const otherFields = { ...response };
+    delete otherFields.message;
+
+    if (Object.keys(otherFields).length > 0) {
+      details.push(JSON.stringify(otherFields));
+    }
+  }
+
+  if (message && details.length > 0) {
+    return `${message} (HTTP ${status}). Подробности: ${details.join("; ")}`;
+  }
+
+  if (message) {
+    return `${message} (HTTP ${status})`;
+  }
+
+  if (details.length > 0) {
+    return `Ошибка сервера (HTTP ${status}). ${details.join("; ")}`;
   }
 
   return `Ошибка запроса. HTTP ${status}`;
@@ -74,10 +119,7 @@ export async function apiRequest<T>(
 
   // Авторизация через Bearer Token
   if (token) {
-    headers.set(
-      "Authorization",
-      `Bearer ${token}`
-    );
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   // Определяем, нужно ли устанавливать Content-Type
@@ -94,10 +136,7 @@ export async function apiRequest<T>(
     !isFormData &&
     !headers.has("Content-Type")
   ) {
-    headers.set(
-      "Content-Type",
-      "application/json"
-    );
+    headers.set("Content-Type", "application/json");
   }
 
   // Формируем адрес запроса
@@ -128,11 +167,15 @@ export async function apiRequest<T>(
 
   // Обрабатываем HTTP-ошибки
   if (!response.ok) {
+    console.error("[API] Ошибка HTTP-запроса:", {
+      url,
+      method: requestOptions.method || "GET",
+      status: response.status,
+      responseData,
+    });
+
     throw new ApiError(
-      getErrorMessage(
-        responseData,
-        response.status
-      ),
+      getErrorMessage(responseData, response.status),
       response.status,
       responseData
     );

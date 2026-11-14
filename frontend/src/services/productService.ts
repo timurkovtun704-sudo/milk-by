@@ -1,3 +1,6 @@
+import {
+  readProductCharacteristics,
+} from "../utils/productCharacteristics";
 
 import { apiRequest } from "./apiClient";
 
@@ -6,9 +9,7 @@ import type {
   ProductCategory,
 } from "../types/catalog";
 
-// ---------------------------------------------------------
 // Типы ответов backend
-// ---------------------------------------------------------
 
 interface ApiResponse<T> {
   success: boolean;
@@ -25,7 +26,14 @@ interface ProductApiRecord {
   is_active?: boolean;
   created_at?: string | null;
   updated_at?: string | null;
-  fat_content?: number | string | null;
+
+  // Шесть характеристик товара
+  fat_procent?: number | string | null;
+  weight?: string | null;
+  storage_conditions?: string | null;
+  shelf_life?: string | null;
+  energy_value?: string | null;
+  items_per_case?: string | null;
 }
 
 interface ProductSearchResponse {
@@ -46,31 +54,41 @@ export interface AdminProduct extends CatalogProduct {
   updatedAt?: string | null;
 }
 
-// Данные создания товара.
-// Соответствуют фактической проверке createProductController.
+// Данные создания товара
+// Все шесть характеристик обязательны и не допускают null.
 export interface CreateAdminProductDto {
   name: string;
   description: string;
   image_url: string;
   category: string;
   is_active: boolean;
+
+  fat_procent: number;
+  weight: string;
+  storage_conditions: string;
+  shelf_life: string;
+  energy_value: string;
+  items_per_case: string;
 }
 
-// Данные изменения товара.
-// price намеренно отсутствует: наличие такого столбца
-// в текущей схеме Supabase не подтверждено.
+// Данные изменения товара
+// При частичном обновлении передаются только изменяемые поля.
 export interface UpdateAdminProductDto {
   name?: string;
   description?: string | null;
   image_url?: string | null;
   category?: string | null;
-  fat_content?: number | null;
   is_active?: boolean;
+
+  fat_procent?: number;
+  weight?: string;
+  storage_conditions?: string;
+  shelf_life?: string;
+  energy_value?: string;
+  items_per_case?: string;
 }
 
-// ---------------------------------------------------------
 // Вспомогательные функции
-// ---------------------------------------------------------
 
 function isRecord(
   value: unknown
@@ -82,27 +100,7 @@ function isRecord(
   );
 }
 
-function parseOptionalNumber(
-  value: number | string | null | undefined
-): number | undefined {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
-    return undefined;
-  }
-
-  const result = Number(value);
-
-  return Number.isFinite(result)
-    ? result
-    : undefined;
-}
-
-// ---------------------------------------------------------
 // Преобразование ответа backend в типы frontend
-// ---------------------------------------------------------
 
 function mapProduct(
   product: ProductApiRecord,
@@ -130,10 +128,6 @@ function mapProduct(
 
   const id = String(numericId);
 
-  const fatContent = parseOptionalNumber(
-    product.fat_content
-  );
-
   const imageUrl =
     typeof product.image_url === "string" &&
     product.image_url.trim()
@@ -142,9 +136,11 @@ function mapProduct(
 
   return {
     id,
+
     // В текущей БД отдельного slug нет.
     // Используем числовой ID для получения товара.
     slug: id,
+
     name: product.name.trim(),
 
     description:
@@ -159,10 +155,10 @@ function mapProduct(
         ? product.category
         : "",
 
-    attributes:
-      fatContent !== undefined
-        ? { fatContent }
-        : undefined,
+    // Обычный объект, совместимый с CatalogProduct.attributes.
+    attributes: {
+      ...readProductCharacteristics(product),
+    },
 
     publishedAt:
       typeof product.created_at === "string"
@@ -205,9 +201,7 @@ function assertApiSuccess<T>(
   return response.data;
 }
 
-// ---------------------------------------------------------
 // Публичный каталог
-// ---------------------------------------------------------
 
 async function getProductsPage(
   page: number,
@@ -308,7 +302,9 @@ export async function getProductById(
   );
 
   if (!isRecord(product)) {
-    throw new Error("Некорректный ответ при получении товара");
+    throw new Error(
+      "Некорректный ответ при получении товара"
+    );
   }
 
   return mapProduct(product as unknown as ProductApiRecord);
@@ -373,9 +369,7 @@ export async function getCatalogData(
   };
 }
 
-// ---------------------------------------------------------
 // Административное управление товарами
-// ---------------------------------------------------------
 
 // Получение всех товаров, включая неактивные
 export async function getAdminProducts(
@@ -395,7 +389,9 @@ export async function getAdminProducts(
   );
 
   if (!Array.isArray(data)) {
-    throw new Error("Backend вернул некорректный список товаров");
+    throw new Error(
+      "Backend вернул некорректный список товаров"
+    );
   }
 
   return data.map(mapAdminProduct);
@@ -420,12 +416,12 @@ export async function createAdminProduct(
   );
 
   if (!isRecord(data)) {
-    throw new Error("Backend вернул некорректный товар");
+    throw new Error(
+      "Backend вернул некорректный товар"
+    );
   }
 
-  return mapAdminProduct(
-    data as unknown as ProductApiRecord
-  );
+  return mapAdminProduct(data as unknown as ProductApiRecord);
 }
 
 // Изменение товара
@@ -444,7 +440,9 @@ export async function updateAdminProduct(
   }
 
   if (Object.keys(payload).length === 0) {
-    throw new Error("Не указаны данные для обновления товара");
+    throw new Error(
+      "Не указаны данные для обновления товара"
+    );
   }
 
   const response = await apiRequest<
@@ -461,12 +459,12 @@ export async function updateAdminProduct(
   );
 
   if (!isRecord(data)) {
-    throw new Error("Backend вернул некорректный товар");
+    throw new Error(
+      "Backend вернул некорректный товар"
+    );
   }
 
-  return mapAdminProduct(
-    data as unknown as ProductApiRecord
-  );
+  return mapAdminProduct(data as unknown as ProductApiRecord);
 }
 
 // Удаление товара

@@ -122,13 +122,16 @@ export default function ProductDetailView({
               messages={labels}
             />
 
+            {/* Шесть фиксированных характеристик товара */}
             <ProductSpecifications
               title={labels.productSpecificationsTitle}
               attributes={product.attributes}
-              attributeLabels={product.attributeLabels}
+              locale={locale}
+              fixedCharacteristics
               messages={labels}
             />
 
+            {/* Характеристики упаковки сохраняют прежний формат */}
             {selectedPackaging && (
               <ProductSpecifications
                 title={labels.productPackagingAttributesTitle}

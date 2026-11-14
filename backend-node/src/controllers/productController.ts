@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 
 import {
@@ -15,9 +14,44 @@ import {
 
 import { updateProductSchema } from '../validators/productSchema.js';
 
+// Проверка непустой текстовой строки
+const isNonEmptyString = (value: unknown): value is string => {
+    return typeof value === 'string' && value.trim().length > 0;
+};
+
+// Получение сообщения из ошибки
+const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    if (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof error.message === 'string'
+    ) {
+        return error.message;
+    }
+
+    return 'Ошибка сервера';
+};
+
+// Проверка кода ошибки Supabase
+const hasErrorCode = (error: unknown, code: string): boolean => {
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === code
+    );
+};
 
 
-export const getAllProductsController = async (req: Request,res: Response) => {
+export const getAllProductsController = async (
+    _req: Request,
+    res: Response
+) => {
     try {
         const products = await getAllProducts();
 
@@ -28,15 +62,16 @@ export const getAllProductsController = async (req: Request,res: Response) => {
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Server error'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
-export const getProductByIdController = async ( req: Request,res: Response) => {
+export const getProductByIdController = async (
+    req: Request,
+    res: Response
+) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
@@ -63,39 +98,56 @@ export const getProductByIdController = async ( req: Request,res: Response) => {
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error? error.message: 'Server error'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
+// Создание товара
+export const createProductController = async (
+    req: Request,
+    res: Response
+) => {
+    const {
+        name,
+        description,
+        image_url,
+        category,
+        is_active,
+        fat_procent,
+        weight,
+        storage_conditions,
+        shelf_life,
+        energy_value,
+        items_per_case
+    } = req.body ?? {};
 
-export const createProductController = async (req: Request, res: Response) => {
-    const { name, description, image_url, category, is_active } = req.body;
-
-    if (typeof name !== 'string' || !name.trim()) {
+    // Проверка основных полей
+    if (!isNonEmptyString(name)) {
         return res.status(400).json({
             success: false,
             message: 'Название товара обязательно'
         });
     }
 
-    if (typeof description !== 'string' || !description.trim()) {
+    if (!isNonEmptyString(description)) {
         return res.status(400).json({
             success: false,
             message: 'Описание товара обязательно'
         });
     }
 
-    if (typeof image_url !== 'string' || !image_url.trim()) {
+    if (!isNonEmptyString(image_url)) {
         return res.status(400).json({
             success: false,
             message: 'Изображение товара обязательно'
         });
     }
 
+    // Проверка ссылки на изображение
     try {
-        const parsedUrl = new URL(image_url);
+        const parsedUrl = new URL(image_url.trim());
 
         if (
             parsedUrl.protocol !== 'http:' &&
@@ -117,20 +169,85 @@ export const createProductController = async (req: Request, res: Response) => {
         });
     }
 
-    if (typeof category !== 'string' || !category.trim()) {
+    if (!isNonEmptyString(category)) {
         return res.status(400).json({
             success: false,
             message: 'Категория товара обязательна'
         });
     }
 
+    // Проверка массовой доли жира
+    if (
+        typeof fat_procent !== 'number' ||
+        !Number.isFinite(fat_procent) ||
+        fat_procent < 0 ||
+        fat_procent > 100
+    ) {
+        return res.status(400).json({
+            success: false,
+            message: 'Массовая доля жира должна быть числом от 0 до 100'
+        });
+    }
+
+    // Проверка обязательных текстовых характеристик
+    const requiredTextFields = [
+        {
+            field: 'weight',
+            value: weight,
+            label: 'Масса продукта'
+        },
+        {
+            field: 'storage_conditions',
+            value: storage_conditions,
+            label: 'Условия хранения'
+        },
+        {
+            field: 'shelf_life',
+            value: shelf_life,
+            label: 'Срок годности'
+        },
+        {
+            field: 'energy_value',
+            value: energy_value,
+            label: 'Энергетическая ценность'
+        },
+        {
+            field: 'items_per_case',
+            value: items_per_case,
+            label: 'Количество товара в транспортной упаковке'
+        }
+    ];
+
+    for (const field of requiredTextFields) {
+        if (!isNonEmptyString(field.value)) {
+            return res.status(400).json({
+                success: false,
+                message: `Поле «${field.label}» обязательно для заполнения`
+            });
+        }
+    }
+
     try {
+        // Отправляем товар в Supabase.
+        // Все шесть характеристик передаются без null.
         const product = await createProduct({
             name: name.trim(),
             description: description.trim(),
             image_url: image_url.trim(),
             category: category.trim(),
-            is_active: is_active
+            is_active,
+
+            fat_procent,
+
+            weight: weight.trim(),
+
+            storage_conditions: storage_conditions.trim(),
+
+            shelf_life: shelf_life.trim(),
+
+            energy_value: energy_value.trim(),
+
+            items_per_case: items_per_case.trim()
         });
 
         return res.status(201).json({
@@ -138,15 +255,10 @@ export const createProductController = async (req: Request, res: Response) => {
             message: 'Товар успешно создан',
             data: product
         });
-
     } catch (error) {
+        console.error('[products] Ошибка создания товара:', error);
 
-        if (
-            typeof error === 'object' &&
-            error !== null &&
-            'code' in error &&
-            error.code === '23505'
-        ) {
+        if (hasErrorCode(error, '23505')) {
             return res.status(409).json({
                 success: false,
                 message: 'Товар с таким названием уже существует'
@@ -155,15 +267,17 @@ export const createProductController = async (req: Request, res: Response) => {
 
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Ошибка сервера'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
-export const deleteProductController = async (req: Request, res: Response) => {
+// Удаление товара
+export const deleteProductController = async (
+    req: Request,
+    res: Response
+) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
@@ -188,11 +302,7 @@ export const deleteProductController = async (req: Request, res: Response) => {
             message: 'Товар успешно удалён'
         });
     } catch (error) {
-        if( typeof error === 'object' && 
-            error !== null && 
-            'code' in error &&
-            error.code ==='23505'
-        ){
+        if (hasErrorCode(error, '23505')) {
             return res.status(409).json({
                 success: false,
                 message: 'Товар с таким названием уже существует'
@@ -201,14 +311,13 @@ export const deleteProductController = async (req: Request, res: Response) => {
 
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Ошибка сервера'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
+// Обновление товара
 export const updateProductController = async (
     req: Request,
     res: Response
@@ -233,7 +342,10 @@ export const updateProductController = async (
     }
 
     try {
-        const product = await updateProduct(id, validation.data as import('../validators/productValidator.js').UpdateProductDto);
+        const product = await updateProduct(
+            id,
+            validation.data as import('../validators/productValidator.js').UpdateProductDto
+        );
 
         if (!product) {
             return res.status(404).json({
@@ -250,14 +362,13 @@ export const updateProductController = async (
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Server error'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
+// Получение категорий
 export const getCategoriesController = async (
     _req: Request,
     res: Response
@@ -272,21 +383,20 @@ export const getCategoriesController = async (
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Server error'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
+// Создание категории
 export const createCategoryController = async (
     req: Request,
     res: Response
 ) => {
-    const { name } = req.body;
+    const { name } = req.body ?? {};
 
-    if (typeof name !== 'string' || !name.trim()) {
+    if (!isNonEmptyString(name)) {
         return res.status(400).json({
             success: false,
             message: 'Название категории обязательно'
@@ -302,12 +412,7 @@ export const createCategoryController = async (
             data: category
         });
     } catch (error) {
-        if (
-            typeof error === 'object' &&
-            error !== null &&
-            'code' in error &&
-            error.code === '23505'
-        ) {
+        if (hasErrorCode(error, '23505')) {
             return res.status(409).json({
                 success: false,
                 message: 'Такая категория уже существует'
@@ -316,20 +421,19 @@ export const createCategoryController = async (
 
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Ошибка сервера'
+            message: getErrorMessage(error)
         });
     }
 };
 
 
+// Переименование категории
 export const renameCategoryController = async (
     req: Request,
     res: Response
 ) => {
     const id = Number(req.params.id);
-    const { name } = req.body;
+    const { name } = req.body ?? {};
 
     if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({
@@ -338,7 +442,7 @@ export const renameCategoryController = async (
         });
     }
 
-    if (typeof name !== 'string' || !name.trim()) {
+    if (!isNonEmptyString(name)) {
         return res.status(400).json({
             success: false,
             message: 'Название категории обязательно'
@@ -354,12 +458,7 @@ export const renameCategoryController = async (
             data: category
         });
     } catch (error) {
-        if (
-            typeof error === 'object' &&
-            error !== null &&
-            'code' in error &&
-            error.code === '23505'
-        ) {
+        if (hasErrorCode(error, '23505')) {
             return res.status(409).json({
                 success: false,
                 message: 'Такая категория уже существует'
@@ -368,13 +467,13 @@ export const renameCategoryController = async (
 
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Ошибка сервера'
+            message: getErrorMessage(error)
         });
     }
 };
 
+
+// Удаление категории
 export const deleteCategoryController = async (
     req: Request,
     res: Response
@@ -412,9 +511,7 @@ export const deleteCategoryController = async (
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: error instanceof Error
-                ? error.message
-                : 'Ошибка сервера'
+            message: getErrorMessage(error)
         });
     }
 };
