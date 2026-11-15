@@ -8,6 +8,11 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
+# Backend
+backend-node/node_modules/
+backend-node/dist/
+backend-node/*.tsbuildinfo
+
 # Java / Maven
 backend/target/
 *.class

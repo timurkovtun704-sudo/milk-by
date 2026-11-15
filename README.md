@@ -7,14 +7,12 @@
 - `frontend/` — пользовательский интерфейс (React + TypeScript + Vite).
 - `backend-node/` — серверное приложение (Node.js + Express + TypeScript).
 - `docs/` — документация проекта, API и базы данных.
-- `docker-compose.yml` — локальный запуск PostgreSQL.
+- `docker-compose.yml` — запуск Frontend и Backend в Docker Compose.
 
 ## Требования
 
 - Node.js 20 или новее и npm.
-- JDK 21.
-- Maven 3.9+ (либо используйте Maven Wrapper, если он будет добавлен командой).
-- Docker Desktop — для запуска PostgreSQL через Docker Compose.
+- Docker Engine и Docker Compose — для production-подобного запуска Frontend и Backend.
 
 ## Запуск Frontend
 
@@ -45,6 +43,10 @@ Backend запускается на `http://localhost:3000`.
 - Изменения попадают в `develop` через Pull Request.
 - В `main` изменения попадают после проверки и готовности релиза.
 - Не коммитить пароли, токены и реальные `.env`-файлы.
+
+## Production-развёртывание
+
+Инструкция по подготовке переменных окружения, базе данных и запуску на сервере находится в [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ## Перед началом разработки
 

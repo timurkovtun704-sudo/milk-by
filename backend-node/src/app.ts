@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import express from "express";
 import cors from "cors";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 import systemRoutes from "./routes/systemRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -16,9 +17,39 @@ import { seoRedirectMiddleware } from "./middleware/seoRedirectMiddleware.js";
 
 const app = express();
 
+// The production topology has one Nginx reverse proxy in front of this service.
+app.set("trust proxy", 1);
+
 // Основные middleware
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Requests without an Origin header (health checks/server-to-server) are allowed.
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    },
+  })
+);
+
+// Basic security headers. TLS should be terminated by the hosting platform/reverse proxy.
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
+
+app.use(express.json({ limit: "1mb" }));
 
 // Проверка 301-перенаправлений
 app.use(seoRedirectMiddleware);
@@ -54,6 +85,9 @@ app.use("/api/seo", seoRoutes);
 
 // Системные маршруты
 app.use("/api", systemRoutes);
+
+// Централизованная обработка ошибок должна идти после всех маршрутов.
+app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 3000;
 
