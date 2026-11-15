@@ -89,8 +89,8 @@ app.use("/api", systemRoutes);
 // Централизованная обработка ошибок должна идти после всех маршрутов.
 app.use(errorHandler);
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.SERVER_PORT || process.env.PORT) || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
