@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 
 import EmptyState from "../components/EmptyState";
@@ -19,15 +18,11 @@ import type {
   CatalogSortOption,
 } from "../types/catalog";
 
-import "../styles/catalog.css";
+import {
+  getProductCharacteristicDefinitions,
+} from "../utils/productCharacteristics";
 
-// Названия фильтра жирности на четырёх языках
-const FAT_CONTENT_LABELS = {
-  ru: "Жирность",
-  be: "Тлустасць",
-  en: "Fat content",
-  zh: "脂肪含量",
-} as const;
+import "../styles/catalog.css";
 
 export default function ProductsPage() {
   const { locale, messages } = useSiteContext();
@@ -38,34 +33,91 @@ export default function ProductsPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] =
     useState(false);
 
-  // Загружаем реальные товары и категории из backend
+  // Загружаем реальные товары и категории из backend.
   const catalogData = useCatalogData();
 
-  // Формируем доступные фильтры на основании полученных данных
+  // Формируем фильтры на основании фактических характеристик товаров.
   const filterDefinitions = useMemo<
     CatalogFilterDefinition[]
   >(() => {
-    const hasFatContent = catalogData.products.some(
-      (product) =>
-        typeof product.attributes?.fatContent === "number"
+    const characteristicDefinitions =
+      getProductCharacteristicDefinitions(locale);
+
+    return characteristicDefinitions.flatMap<CatalogFilterDefinition>(
+      (definition) => {
+        const values = catalogData.products.map(
+          (product) => product.attributes?.[definition.key]
+        );
+
+        // Числовая характеристика: массовая доля жира.
+        if (definition.type === "number") {
+          const numericValues = values.filter(
+            (value): value is number =>
+              typeof value === "number" &&
+              Number.isFinite(value)
+          );
+
+          const uniqueValues = [...new Set(numericValues)];
+
+          // Диапазон имеет смысл, только если есть разные значения.
+          if (uniqueValues.length < 2) {
+            return [];
+          }
+
+          const min = Math.min(...uniqueValues);
+          const max = Math.max(...uniqueValues);
+
+          if (min === max) {
+            return [];
+          }
+
+          return [
+            {
+              id: `product-${definition.key}`,
+              key: definition.key,
+              label: definition.label,
+              type: "range",
+              min,
+              max,
+              step: 0.01,
+              ...(definition.unit
+                ? { unit: definition.unit }
+                : {}),
+            },
+          ];
+        }
+
+        // Текстовые характеристики: варианты получаем из backend.
+        const uniqueValues = new Set(
+          values
+            .filter(
+              (value): value is string =>
+                typeof value === "string"
+            )
+            .map((value) => value.trim())
+            .filter(Boolean)
+        );
+
+        // Не показываем фильтр, если доступно только одно значение.
+        if (uniqueValues.size < 2) {
+          return [];
+        }
+
+        return [
+          {
+            id: `product-${definition.key}`,
+            key: definition.key,
+            label: definition.label,
+
+            // Множественный выбор значений.
+            type: "multi-select",
+          },
+        ];
+      }
     );
-
-    if (!hasFatContent) {
-      return [];
-    }
-
-    return [
-      {
-        id: "fat-content",
-        key: "fatContent",
-        label: FAT_CONTENT_LABELS[locale],
-        type: "range",
-        unit: "%",
-      },
-    ];
   }, [catalogData.products, locale]);
 
-  // Сохраняем существующую логику каталога
+  // Поиск, фильтрация и сортировка каталога.
   const catalog = useCatalog({
     products: catalogData.products,
     categories: catalogData.categories,

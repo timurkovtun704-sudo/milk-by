@@ -1,0 +1,43 @@
+/* Сетка новостей на главной странице */
+
+.home-news__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.home-news__grid > * {
+  min-width: 0;
+  height: 100%;
+}
+
+.home-news__grid .news-card__link {
+  height: 100%;
+}
+
+/* Карточки товаров на главной странице */
+
+.home-content .product-grid {
+  align-items: stretch;
+}
+
+.home-content .product-card {
+  height: 100%;
+}
+
+/* Адаптация под планшеты */
+
+@media (max-width: 900px) {
+  .home-news__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Адаптация под смартфоны */
+
+@media (max-width: 600px) {
+  .home-news__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

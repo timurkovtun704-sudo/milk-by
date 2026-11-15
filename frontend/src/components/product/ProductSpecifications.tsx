@@ -4,9 +4,18 @@ import type {
 } from "../../types/catalog";
 
 import type { CatalogUiMessages } from "../../i18n/catalogMessages";
+import type { Locale } from "../../i18n/messages";
+
+import {
+  getVisibleProductCharacteristics,
+} from "../../utils/productCharacteristics";
 
 interface ProductSpecificationsProps {
   title: string;
+
+  locale?: Locale;
+
+  fixedCharacteristics?: boolean;
 
   attributes?: Readonly<
     Record<string, CatalogAttributeValue>
@@ -49,10 +58,55 @@ function formatAttributeValue(
 
 export default function ProductSpecifications({
   title,
+  locale = "ru",
+  fixedCharacteristics = false,
   attributes = {},
   attributeLabels = {},
   messages,
 }: ProductSpecificationsProps) {
+  // Фиксированные характеристики самого товара
+  if (fixedCharacteristics) {
+    const entries = getVisibleProductCharacteristics(
+      attributes,
+      locale
+    );
+
+    if (entries.length === 0) {
+      return (
+        <section className="product-specifications">
+          <h2>{title}</h2>
+
+          <p className="product-specifications__empty">
+            {messages.productNoSpecifications}
+          </p>
+        </section>
+      );
+    }
+
+    return (
+      <section className="product-specifications">
+        <h2>{title}</h2>
+
+        <dl className="product-specifications__list">
+          {entries.map((item) => (
+            <div
+              className="product-specifications__item"
+              key={item.key}
+            >
+              <dt>{item.label}</dt>
+
+              <dd>
+                {String(item.value)}
+                {item.unit ? ` ${item.unit}` : ""}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    );
+  }
+
+  // Универсальные характеристики упаковки
   const entries = Object.entries(attributes)
     .map(([key, value]) => ({
       key,

@@ -1,4 +1,3 @@
-
 import {
   useCallback,
   useEffect,
@@ -30,10 +29,21 @@ import type {
 
 import type { ProductCategory } from "../../types/catalog";
 
+import {
+  EMPTY_PRODUCT_CHARACTERISTICS,
+  characteristicsToFormValues,
+  getProductCharacteristicDefinitions,
+  readProductCharacteristics,
+} from "../../utils/productCharacteristics";
+
+import type {
+  ProductCharacteristicFormValues,
+} from "../../utils/productCharacteristics";
+
 import "../../styles/admin.css";
 import "../../styles/admin-api.css";
 
-interface ProductFormState {
+interface ProductFormState extends ProductCharacteristicFormValues {
   name: string;
   description: string;
   imageUrl: string;
@@ -47,13 +57,35 @@ const EMPTY_FORM: ProductFormState = {
   imageUrl: "",
   category: "",
   isActive: true,
+  ...EMPTY_PRODUCT_CHARACTERISTICS,
 };
+
+type RequiredProductCharacteristics = Pick<
+  CreateAdminProductDto,
+  | "fat_procent"
+  | "weight"
+  | "storage_conditions"
+  | "shelf_life"
+  | "energy_value"
+  | "items_per_case"
+>;
+
+const REQUIRED_TEXT_CHARACTERISTIC_KEYS = [
+  "weight",
+  "storage_conditions",
+  "shelf_life",
+  "energy_value",
+  "items_per_case",
+] as const;
 
 export default function AdminProductsPage() {
   const { locale, messages, notify } = useAdminContext();
   const { accessToken, role } = useAuth();
 
   const labels = adminApiMessages[locale];
+
+  const characteristicDefinitions =
+    getProductCharacteristicDefinitions(locale);
 
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -113,7 +145,10 @@ export default function AdminProductsPage() {
           return;
         }
 
-        console.error("Ошибка загрузки административных товаров:", error);
+        console.error(
+          "Ошибка загрузки административных товаров:",
+          error
+        );
 
         setLoadError(
           error instanceof Error
@@ -135,6 +170,7 @@ export default function AdminProductsPage() {
     };
   }, [accessToken, reloadKey, labels.loadError]);
 
+  // Открытие формы создания товара
   function openCreateForm() {
     setEditingProductId(null);
 
@@ -146,8 +182,13 @@ export default function AdminProductsPage() {
     setFormOpen(true);
   }
 
+  // Открытие формы редактирования товара
   function openEditForm(product: AdminProduct) {
     setEditingProductId(product.id);
+
+    const characteristics = readProductCharacteristics(
+      product.attributes ?? {}
+    );
 
     setForm({
       name: product.name,
@@ -155,17 +196,21 @@ export default function AdminProductsPage() {
       imageUrl: product.imageUrl ?? "",
       category: product.categoryId,
       isActive: product.isActive,
+
+      ...characteristicsToFormValues(characteristics),
     });
 
     setFormOpen(true);
   }
 
+  // Закрытие формы и сброс её состояния
   function closeForm() {
     setFormOpen(false);
     setEditingProductId(null);
     setForm(EMPTY_FORM);
   }
 
+  // Обновление отдельного поля формы
   function updateField<K extends keyof ProductFormState>(
     key: K,
     value: ProductFormState[K]
@@ -176,6 +221,63 @@ export default function AdminProductsPage() {
     }));
   }
 
+  // Проверка и формирование обязательных характеристик
+  function getRequiredCharacteristics():
+    | RequiredProductCharacteristics
+    | null {
+    const fatText = form.fat_procent.trim();
+
+    if (fatText === "") {
+      notify(
+        "Массовая доля жира обязательна для заполнения",
+        "warning"
+      );
+
+      return null;
+    }
+
+    const fatProcent = Number(fatText);
+
+    if (
+      !Number.isFinite(fatProcent) ||
+      fatProcent < 0 ||
+      fatProcent > 100
+    ) {
+      notify(
+        "Массовая доля жира должна быть числом от 0 до 100",
+        "warning"
+      );
+
+      return null;
+    }
+
+    // Проверяем обязательные текстовые характеристики
+    for (const key of REQUIRED_TEXT_CHARACTERISTIC_KEYS) {
+      if (!form[key].trim()) {
+        const definition = characteristicDefinitions.find(
+          (item) => item.key === key
+        );
+
+        notify(
+          `${definition?.label ?? key}: обязательное поле`,
+          "warning"
+        );
+
+        return null;
+      }
+    }
+
+    return {
+      fat_procent: fatProcent,
+      weight: form.weight.trim(),
+      storage_conditions: form.storage_conditions.trim(),
+      shelf_life: form.shelf_life.trim(),
+      energy_value: form.energy_value.trim(),
+      items_per_case: form.items_per_case.trim(),
+    };
+  }
+
+  // Сохранение товара
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -189,6 +291,12 @@ export default function AdminProductsPage() {
       return;
     }
 
+    const characteristicValues = getRequiredCharacteristics();
+
+    if (!characteristicValues) {
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -199,6 +307,8 @@ export default function AdminProductsPage() {
           image_url: form.imageUrl.trim(),
           category: form.category,
           is_active: form.isActive,
+
+          ...characteristicValues,
         };
 
         await updateAdminProduct(
@@ -215,6 +325,8 @@ export default function AdminProductsPage() {
           image_url: form.imageUrl.trim(),
           category: form.category,
           is_active: form.isActive,
+
+          ...characteristicValues,
         };
 
         await createAdminProduct(payload, accessToken);
@@ -238,6 +350,7 @@ export default function AdminProductsPage() {
     }
   }
 
+  // Удаление товара
   async function handleDelete(product: AdminProduct) {
     if (!accessToken || !canDelete) {
       return;
@@ -346,6 +459,58 @@ export default function AdminProductsPage() {
                 disabled={isSaving}
               />
             </div>
+
+            {/* Шесть фиксированных характеристик товара */}
+            <section className="admin-form-section">
+              <h3>{messages.products.characteristics}</h3>
+
+              <div className="admin-form-grid">
+                {characteristicDefinitions.map((definition) => (
+                  <div className="admin-field" key={definition.key}>
+                    <label htmlFor={`product-${definition.key}`}>
+                      {definition.label}
+                      {definition.unit
+                        ? ` (${definition.unit})`
+                        : ""} *
+                    </label>
+
+                    <input
+                      id={`product-${definition.key}`}
+                      type={definition.type}
+                      value={form[definition.key]}
+                      onChange={(event) =>
+                        updateField(
+                          definition.key,
+                          event.currentTarget.value
+                        )
+                      }
+                      min={
+                        definition.key === "fat_procent"
+                          ? 0
+                          : undefined
+                      }
+                      max={
+                        definition.key === "fat_procent"
+                          ? 100
+                          : undefined
+                      }
+                      step={
+                        definition.key === "fat_procent"
+                          ? "0.01"
+                          : undefined
+                      }
+                      maxLength={
+                        definition.type === "text"
+                          ? 1000
+                          : undefined
+                      }
+                      required
+                      disabled={isSaving}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
 
             <div className="admin-field">
               <label htmlFor="product-image-url">

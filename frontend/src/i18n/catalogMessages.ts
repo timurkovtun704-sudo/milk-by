@@ -49,6 +49,14 @@ export interface CatalogUiMessages {
   productWeight: string;
   productVolume: string;
   productShelfLife: string;
+
+  // Названия шести фиксированных характеристик товара
+  characteristicFatProcent: string;
+  characteristicWeight: string;
+  characteristicStorageConditions: string;
+  characteristicShelfValue: string;
+  characteristicEnergyValue: string;
+  characteristicItemPerCase: string;
 }
 
 export const catalogMessages: Record<
@@ -106,6 +114,14 @@ export const catalogMessages: Record<
     productWeight: "Масса",
     productVolume: "Объём",
     productShelfLife: "Срок годности",
+
+    characteristicFatProcent: "Массовая доля жира",
+    characteristicWeight: "Масса продукта",
+    characteristicStorageConditions: "Условия хранения",
+    characteristicShelfValue: "Срок годности",
+    characteristicEnergyValue: "Энергетическая ценность",
+    characteristicItemPerCase:
+      "Количество товара в транспортной упаковке",
   },
 
   be: {
@@ -159,6 +175,14 @@ export const catalogMessages: Record<
     productWeight: "Маса",
     productVolume: "Аб'ём",
     productShelfLife: "Тэрмін прыдатнасці",
+
+    characteristicFatProcent: "Масавая доля тлушчу",
+    characteristicWeight: "Маса прадукту",
+    characteristicStorageConditions: "Умовы захоўвання",
+    characteristicShelfValue: "Тэрмін прыдатнасці",
+    characteristicEnergyValue: "Энергетычная каштоўнасць",
+    characteristicItemPerCase:
+      "Колькасць тавару ў транспартнай упакоўцы",
   },
 
   en: {
@@ -212,6 +236,14 @@ export const catalogMessages: Record<
     productWeight: "Weight",
     productVolume: "Volume",
     productShelfLife: "Shelf life",
+
+    characteristicFatProcent: "Mass fraction of fat",
+    characteristicWeight: "Product weight",
+    characteristicStorageConditions: "Storage conditions",
+    characteristicShelfValue: "Shelf life",
+    characteristicEnergyValue: "Energy value",
+    characteristicItemPerCase:
+      "Number of items per transport package",
   },
 
   zh: {
@@ -263,5 +295,12 @@ export const catalogMessages: Record<
     productWeight: "重量",
     productVolume: "容量",
     productShelfLife: "保质期",
+
+    characteristicFatProcent: "脂肪质量分数",
+    characteristicWeight: "产品重量",
+    characteristicStorageConditions: "储存条件",
+    characteristicShelfValue: "保质期",
+    characteristicEnergyValue: "能量值",
+    characteristicItemPerCase: "每个运输包装中的产品数量",
   },
 };
